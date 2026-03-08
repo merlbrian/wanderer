@@ -42,6 +42,7 @@ const MissionsContent: React.FC = () => {
   const didLoad = useRef(false);
   const [savedRouteText, setSavedRouteText] = useState('');
   const [savedRouteIds, setSavedRouteIds] = useState<number[]>([]);
+  const [persistedRouteNames, setPersistedRouteNames] = useState<string[]>([]);
   const [isSavingRoute, setIsSavingRoute] = useState(false);
   const [isApplyingRoute, setIsApplyingRoute] = useState(false);
   const [routeFeedback, setRouteFeedback] = useState<string | null>(null);
@@ -99,8 +100,10 @@ const MissionsContent: React.FC = () => {
         type: OutCommand.getRoute,
         data: {},
       });
-      setSavedRouteText((resp.names ?? []).join('\n'));
+      const names = resp.names ?? [];
+      setSavedRouteText(names.join('\n'));
       setSavedRouteIds(resp.ids ?? []);
+      setPersistedRouteNames(names);
     } catch {
       // ignore
     }
@@ -321,13 +324,58 @@ const MissionsContent: React.FC = () => {
 
       {/* Saved Route */}
       <div className="flex flex-col gap-1.5">
-        <div className="text-stone-400 uppercase tracking-wide text-[10px]">Saved Route</div>
-        <textarea
-          className="w-full bg-neutral-800 border border-gray-600 text-gray-200 rounded px-1 py-0.5 text-xs resize-y min-h-[60px]"
-          placeholder="One system name per line\u2026"
-          value={savedRouteText}
-          onChange={e => setSavedRouteText(e.target.value)}
-        />
+        <div className="flex items-center justify-between">
+          <div className="text-stone-400 uppercase tracking-wide text-[10px]">Saved Route</div>
+          {persistedRouteNames.length > 0 && (
+            <span className="text-stone-500 text-[10px]">{persistedRouteNames.length} system{persistedRouteNames.length !== 1 ? 's' : ''}</span>
+          )}
+        </div>
+
+        {/* Current saved route display */}
+        {persistedRouteNames.length > 0 ? (
+          <div className="flex flex-col gap-0.5">
+            {persistedRouteNames.map((name, i) => (
+              <div key={name} className="flex items-center gap-1.5 px-1.5 py-0.5 bg-neutral-800 rounded border border-gray-700 border-opacity-40 group">
+                <span className="text-stone-500 text-[10px] w-4 shrink-0 text-right">{i + 1}.</span>
+                <span className="text-gray-200 text-xs flex-1 truncate">{name}</span>
+                <button
+                  className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-red-400 text-[10px] leading-none shrink-0 transition-opacity"
+                  title={`Remove ${name} from route`}
+                  onClick={() => {
+                    setSavedRouteText(prev =>
+                      prev
+                        .split('\n')
+                        .map(s => s.trim())
+                        .filter(s => s !== name)
+                        .join('\n'),
+                    );
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-stone-500 text-[10px] text-center py-1">No route saved yet</div>
+        )}
+
+        {/* Edit textarea */}
+        <details className="group/edit">
+          <summary className="text-stone-500 hover:text-stone-300 text-[10px] cursor-pointer select-none list-none flex items-center gap-1">
+            <span className="group-open/edit:hidden">▶ Edit route</span>
+            <span className="hidden group-open/edit:inline">▼ Edit route</span>
+          </summary>
+          <div className="flex flex-col gap-1.5 mt-1">
+            <textarea
+              className="w-full bg-neutral-800 border border-gray-600 text-gray-200 rounded px-1 py-0.5 text-xs resize-y min-h-[60px]"
+              placeholder="One system name per line\u2026"
+              value={savedRouteText}
+              onChange={e => setSavedRouteText(e.target.value)}
+            />
+          </div>
+        </details>
+
         <div className="flex gap-1.5 justify-end">
           <button
             className="px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 disabled:opacity-40 text-white rounded text-xs"
