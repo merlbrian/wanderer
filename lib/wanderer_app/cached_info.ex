@@ -160,6 +160,32 @@ defmodule WandererApp.CachedInfo do
     end
   end
 
+  def get_system_id_by_name(name) when is_binary(name) do
+    cache_key = {:system_name_to_id, String.downcase(name)}
+
+    case Cachex.get(:system_static_info_cache, cache_key) do
+      {:ok, nil} ->
+        case WandererApp.Api.MapSolarSystem.find_by_exact_name(%{name: name}) do
+          {:ok, [%{solar_system_id: id} | _]} ->
+            Cachex.put(:system_static_info_cache, cache_key, id)
+            {:ok, id}
+
+          {:ok, []} ->
+            {:error, :not_found}
+
+          {:error, reason} ->
+            Logger.error("Failed to find system by name #{inspect(name)}: #{inspect(reason)}")
+            {:error, :api_error}
+        end
+
+      {:ok, id} ->
+        {:ok, id}
+
+      {:error, reason} ->
+        Logger.error("Cache error for system name lookup #{inspect(name)}: #{inspect(reason)}")
+        {:error, :cache_error}
+    end
+  end
   def get_wormhole_types() do
     case WandererApp.Cache.lookup(:wormhole_types) do
       {:ok, nil} ->
