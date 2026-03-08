@@ -86,8 +86,6 @@ defmodule WandererApp.Api.AgentMission do
         :constellation,
         :region,
         :mission_name,
-        :status,
-        :deleted,
         :updated_at
       ]
 
