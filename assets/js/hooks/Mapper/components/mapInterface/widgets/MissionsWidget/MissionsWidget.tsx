@@ -316,6 +316,7 @@ const MissionsContent: React.FC = () => {
             onClearCharacter={handleClearCharacter}
             onClearAll={handleClearAll}
             onAddToRoute={handleAddToRoute}
+            routeSystemNames={persistedRouteNames}
           />
         ))}
       </div>
@@ -425,10 +426,12 @@ interface SystemCardProps {
   onClearCharacter: (charId: string, systemName: string) => void;
   onClearAll: (systemName: string) => void;
   onAddToRoute: (systemName: string) => void;
+  routeSystemNames: string[];
 }
 
-const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCharacter, onClearAll, onAddToRoute }) => {
+const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCharacter, onClearAll, onAddToRoute, routeSystemNames }) => {
   const cm = useRef<ContextMenu>(null);
+  const isInRoute = routeSystemNames.includes(group.system_name);
   const ctxItems = useMemo(
     () => [{ label: 'Add to Saved Route', icon: 'pi pi-map', command: () => onAddToRoute(group.system_name) }],
     [group.system_name, onAddToRoute],
@@ -446,6 +449,9 @@ const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCha
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-gray-100 truncate">{group.system_name}</span>
             <span className="text-[10px] bg-neutral-600 text-stone-300 rounded px-1 shrink-0">{totalCount}</span>
+            {isInRoute && (
+              <span className="text-green-400 text-[10px] shrink-0" title="In saved route">→</span>
+            )}
           </div>
           <div className="text-stone-500 text-[10px] truncate">
             {[group.constellation, group.region].filter(Boolean).join(' · ')}
