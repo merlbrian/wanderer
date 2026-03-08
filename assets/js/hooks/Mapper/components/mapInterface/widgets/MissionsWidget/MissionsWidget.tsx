@@ -378,6 +378,27 @@ const MissionsContent: React.FC = () => {
 
         <div className="flex gap-1.5 justify-end">
           <button
+            className="px-2 py-0.5 bg-red-900 hover:bg-red-700 disabled:opacity-40 text-white rounded text-xs mr-auto"
+            disabled={isSavingRoute || !persistedRouteNames.length}
+            onClick={async () => {
+              setIsSavingRoute(true);
+              setRouteFeedback(null);
+              try {
+                await outCommand({ type: OutCommand.saveRoute, data: { system_names: [] } });
+                setSavedRouteText('');
+                setSavedRouteIds([]);
+                setPersistedRouteNames([]);
+                setRouteFeedback('Route cleared');
+              } catch {
+                setRouteFeedback('Failed to clear route');
+              } finally {
+                setIsSavingRoute(false);
+              }
+            }}
+          >
+            Clear
+          </button>
+          <button
             className="px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 disabled:opacity-40 text-white rounded text-xs"
             disabled={isSavingRoute || !savedRouteText.trim()}
             onClick={handleSaveRoute}
