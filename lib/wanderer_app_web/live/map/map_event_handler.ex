@@ -8,6 +8,7 @@ defmodule WandererAppWeb.MapEventHandler do
     MapCharactersEventHandler,
     MapConnectionsEventHandler,
     MapCoreEventHandler,
+    MapMissionsEventHandler,
     MapRoutesEventHandler,
     MapSignaturesEventHandler,
     MapSystemsEventHandler,
@@ -166,6 +167,18 @@ defmodule WandererAppWeb.MapEventHandler do
     "cancel_ping"
   ]
 
+  @map_missions_events [
+    :missions_updated
+  ]
+
+  @map_missions_ui_events [
+    "load_missions",
+    "paste_missions",
+    "get_missions",
+    "complete_mission",
+    "delete_mission"
+  ]
+
   def handle_event(socket, %{event: event_name} = event)
       when event_name in @map_characters_events,
       do: MapCharactersEventHandler.handle_server_event(event, socket)
@@ -205,6 +218,10 @@ defmodule WandererAppWeb.MapEventHandler do
   def handle_event(socket, %{event: event_name} = event)
       when event_name in @map_pings_events,
       do: MapPingsEventHandler.handle_server_event(event, socket)
+
+  def handle_event(socket, %{event: event_name} = event)
+      when event_name in @map_missions_events,
+      do: MapMissionsEventHandler.handle_server_event(event, socket)
 
   def handle_event(socket, {ref, result}) when is_reference(ref) do
     Process.demonitor(ref, [:flush])
@@ -273,6 +290,10 @@ defmodule WandererAppWeb.MapEventHandler do
   def handle_ui_event(event, body, socket)
       when event in @map_pings_ui_events,
       do: MapPingsEventHandler.handle_ui_event(event, body, socket)
+
+  def handle_ui_event(event, body, socket)
+      when event in @map_missions_ui_events,
+      do: MapMissionsEventHandler.handle_ui_event(event, body, socket)
 
   def handle_ui_event(
         event,
