@@ -4,7 +4,6 @@ import { Widget } from '@/hooks/Mapper/components/mapInterface/components';
 import { OutCommand } from '@/hooks/Mapper/types/mapHandlers';
 import { parseMissions, MissionPair } from '@/hooks/Mapper/helpers/parseMissions';
 import { getCharacterPortraitUrl } from '@/hooks/Mapper/helpers/getEveImageUrl';
-import { ContextMenu } from 'primereact/contextmenu';
 
 interface Mission {
   id: string;
@@ -40,12 +39,6 @@ const MissionsContent: React.FC = () => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [preview, setPreview] = useState<MissionPair[]>([]);
   const didLoad = useRef(false);
-  const [savedRouteText, setSavedRouteText] = useState('');
-  const [savedRouteIds, setSavedRouteIds] = useState<number[]>([]);
-  const [persistedRouteNames, setPersistedRouteNames] = useState<string[]>([]);
-  const [isSavingRoute, setIsSavingRoute] = useState(false);
-  const [isApplyingRoute, setIsApplyingRoute] = useState(false);
-  const [routeFeedback, setRouteFeedback] = useState<string | null>(null);
 
   const userOwnedChars = useMemo(
     () => characters.filter(c => userCharacters.includes(c.eve_id)),
@@ -94,28 +87,12 @@ const MissionsContent: React.FC = () => {
     }
   }, [outCommand, update]);
 
-  const loadRoute = useCallback(async () => {
-    try {
-      const resp = await outCommand<{ names: string[]; ids: number[] }>({
-        type: OutCommand.getRoute,
-        data: {},
-      });
-      const names = resp.names ?? [];
-      setSavedRouteText(names.join('\n'));
-      setSavedRouteIds(resp.ids ?? []);
-      setPersistedRouteNames(names);
-    } catch {
-      // ignore
-    }
-  }, [outCommand]);
-
   useEffect(() => {
     if (!didLoad.current) {
       didLoad.current = true;
       loadMissions();
-      loadRoute();
     }
-  }, [loadMissions, loadRoute]);
+  }, [loadMissions]);
 
   useEffect(() => {
     if (!pasteText.trim()) { setPreview([]); return; }
@@ -166,70 +143,6 @@ const MissionsContent: React.FC = () => {
     },
     [outCommand, loadMissions],
   );
-
-  const handleSaveRoute = useCallback(async () => {
-    const names = savedRouteText
-      .split('\n')
-      .map(s => s.trim())
-      .filter(Boolean);
-    if (!names.length) return;
-    setIsSavingRoute(true);
-    setRouteFeedback(null);
-    try {
-      const resp = await outCommand<{ status: string; saved_count: number; skipped: string[] }>({
-        type: OutCommand.saveRoute,
-        data: { system_names: names },
-      });
-      if (resp.status === 'ok') {
-        const skippedMsg = resp.skipped?.length ? `; unknown: ${resp.skipped.join(', ')}` : '';
-        setRouteFeedback(`Saved ${resp.saved_count} system${resp.saved_count !== 1 ? 's' : ''}${skippedMsg}`);
-        await loadRoute();
-      } else {
-        setRouteFeedback('Error saving route');
-      }
-    } catch {
-      setRouteFeedback('Failed to save');
-    } finally {
-      setIsSavingRoute(false);
-    }
-  }, [outCommand, savedRouteText, loadRoute]);
-
-  const handleApplyRoute = useCallback(async () => {
-    if (!savedRouteIds.length || !userOwnedChars.length) return;
-    setIsApplyingRoute(true);
-    setRouteFeedback(null);
-    try {
-      const charIds = userOwnedChars.map(c => c.eve_id);
-      for (let i = 0; i < savedRouteIds.length; i++) {
-        await outCommand({
-          type: OutCommand.setAutopilotWaypoint,
-          data: {
-            character_eve_ids: charIds,
-            destination_id: savedRouteIds[i],
-            add_to_beginning: false,
-            clear_other_waypoints: i === 0,
-          },
-        });
-      }
-      setRouteFeedback(`Route applied: ${savedRouteIds.length} waypoint${savedRouteIds.length !== 1 ? 's' : ''}`);
-    } catch {
-      setRouteFeedback('Failed to apply route');
-    } finally {
-      setIsApplyingRoute(false);
-    }
-  }, [outCommand, savedRouteIds, userOwnedChars]);
-
-  const handleAddToRoute = useCallback((systemName: string) => {
-    setSavedRouteText(prev => {
-      const lines = prev.split('\n').map(s => s.trim()).filter(Boolean);
-      if (lines.includes(systemName)) {
-        setRouteFeedback(`${systemName} is already in the route`);
-        return prev;
-      }
-      setRouteFeedback(`Added ${systemName} — remember to Save`);
-      return lines.length > 0 ? prev.trimEnd() + '\n' + systemName : systemName;
-    });
-  }, []);
 
   const systemGroups = useMemo<SystemGroup[]>(() => {
     const active = missions.filter(m => m.status === 'active');
@@ -315,107 +228,10 @@ const MissionsContent: React.FC = () => {
             charNameById={charNameById}
             onClearCharacter={handleClearCharacter}
             onClearAll={handleClearAll}
-            onAddToRoute={handleAddToRoute}
-            routeSystemNames={persistedRouteNames}
           />
         ))}
       </div>
 
-      <div className="border-t border-gray-600 border-opacity-30" />
-
-      {/* Saved Route */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
-          <div className="text-stone-400 uppercase tracking-wide text-[10px]">Saved Route</div>
-          {persistedRouteNames.length > 0 && (
-            <span className="text-stone-500 text-[10px]">{persistedRouteNames.length} system{persistedRouteNames.length !== 1 ? 's' : ''}</span>
-          )}
-        </div>
-
-        {/* Current saved route display */}
-        {persistedRouteNames.length > 0 ? (
-          <div className="flex flex-col gap-0.5">
-            {persistedRouteNames.map((name, i) => (
-              <div key={name} className="flex items-center gap-1.5 px-1.5 py-0.5 bg-neutral-800 rounded border border-gray-700 border-opacity-40 group">
-                <span className="text-stone-500 text-[10px] w-4 shrink-0 text-right">{i + 1}.</span>
-                <span className="text-gray-200 text-xs flex-1 truncate">{name}</span>
-                <button
-                  className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-red-400 text-[10px] leading-none shrink-0 transition-opacity"
-                  title={`Remove ${name} from route`}
-                  onClick={() => {
-                    setSavedRouteText(prev =>
-                      prev
-                        .split('\n')
-                        .map(s => s.trim())
-                        .filter(s => s !== name)
-                        .join('\n'),
-                    );
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-stone-500 text-[10px] text-center py-1">No route saved yet</div>
-        )}
-
-        {/* Edit textarea */}
-        <details className="group/edit">
-          <summary className="text-stone-500 hover:text-stone-300 text-[10px] cursor-pointer select-none list-none flex items-center gap-1">
-            <span className="group-open/edit:hidden">▶ Edit route</span>
-            <span className="hidden group-open/edit:inline">▼ Edit route</span>
-          </summary>
-          <div className="flex flex-col gap-1.5 mt-1">
-            <textarea
-              className="w-full bg-neutral-800 border border-gray-600 text-gray-200 rounded px-1 py-0.5 text-xs resize-y min-h-[60px]"
-              placeholder="One system name per line\u2026"
-              value={savedRouteText}
-              onChange={e => setSavedRouteText(e.target.value)}
-            />
-          </div>
-        </details>
-
-        <div className="flex gap-1.5 justify-end">
-          <button
-            className="px-2 py-0.5 bg-red-900 hover:bg-red-700 disabled:opacity-40 text-white rounded text-xs mr-auto"
-            disabled={isSavingRoute || !persistedRouteNames.length}
-            onClick={async () => {
-              setIsSavingRoute(true);
-              setRouteFeedback(null);
-              try {
-                await outCommand({ type: OutCommand.saveRoute, data: { system_names: [] } });
-                setSavedRouteText('');
-                setSavedRouteIds([]);
-                setPersistedRouteNames([]);
-                setRouteFeedback('Route cleared');
-              } catch {
-                setRouteFeedback('Failed to clear route');
-              } finally {
-                setIsSavingRoute(false);
-              }
-            }}
-          >
-            Clear
-          </button>
-          <button
-            className="px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 disabled:opacity-40 text-white rounded text-xs"
-            disabled={isSavingRoute || !savedRouteText.trim()}
-            onClick={handleSaveRoute}
-          >
-            {isSavingRoute ? 'Saving\u2026' : 'Save'}
-          </button>
-          <button
-            className="px-2 py-0.5 bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white rounded text-xs"
-            disabled={isApplyingRoute || !savedRouteIds.length || !userOwnedChars.length}
-            onClick={handleApplyRoute}
-          >
-            {isApplyingRoute ? 'Applying\u2026' : 'Apply Route'}
-          </button>
-        </div>
-        {routeFeedback && <div className="text-stone-300 text-[10px]">{routeFeedback}</div>}
-      </div>
     </div>
   );
 };
@@ -425,33 +241,21 @@ interface SystemCardProps {
   charNameById: Map<string, string>;
   onClearCharacter: (charId: string, systemName: string) => void;
   onClearAll: (systemName: string) => void;
-  onAddToRoute: (systemName: string) => void;
-  routeSystemNames: string[];
 }
 
-const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCharacter, onClearAll, onAddToRoute, routeSystemNames }) => {
-  const cm = useRef<ContextMenu>(null);
-  const isInRoute = routeSystemNames.includes(group.system_name);
-  const ctxItems = useMemo(
-    () => [{ label: 'Add to Saved Route', icon: 'pi pi-map', command: () => onAddToRoute(group.system_name) }],
-    [group.system_name, onAddToRoute],
-  );
+const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCharacter, onClearAll }) => {
   const charEntries = Array.from(group.byChar.entries());
   const totalCount = charEntries.reduce((sum, [, ms]) => sum + ms.reduce((s, m) => s + (m.mission_count ?? 1), 0), 0);
 
   return (
     <div className="bg-neutral-800 rounded border border-gray-600 border-opacity-20 overflow-hidden">
       <div
-        className="flex items-center justify-between px-2 py-1.5 bg-neutral-700 bg-opacity-40 cursor-context-menu"
-        onContextMenu={e => cm.current?.show(e)}
+        className="flex items-center justify-between px-2 py-1.5 bg-neutral-700 bg-opacity-40"
       >
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-gray-100 truncate">{group.system_name}</span>
             <span className="text-[10px] bg-neutral-600 text-stone-300 rounded px-1 shrink-0">{totalCount}</span>
-            {isInRoute && (
-              <span className="text-green-400 text-[10px] shrink-0" title="In saved route">→</span>
-            )}
           </div>
           <div className="text-stone-500 text-[10px] truncate">
             {[group.constellation, group.region].filter(Boolean).join(' · ')}
@@ -493,7 +297,6 @@ const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCha
           );
         })}
       </div>
-      <ContextMenu ref={cm} model={ctxItems} />
     </div>
   );
 };

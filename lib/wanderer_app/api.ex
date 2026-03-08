@@ -25,7 +25,6 @@ defmodule WandererApp.Api do
     resource WandererApp.Api.MapSystemSignature
     resource WandererApp.Api.MapSystemStructure
     resource WandererApp.Api.AgentMission
-    resource WandererApp.Api.AgentMissionRoute
     resource WandererApp.Api.MapCharacterSettings
     resource WandererApp.Api.MapSubscription
     resource WandererApp.Api.MapTransaction

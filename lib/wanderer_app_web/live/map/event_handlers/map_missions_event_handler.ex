@@ -5,7 +5,6 @@ defmodule WandererAppWeb.MapMissionsEventHandler do
 
   alias WandererAppWeb.{MapEventHandler, MapCoreEventHandler}
   alias WandererApp.Map.Operations.AgentMissions
-  alias WandererApp.Map.Operations.AgentMissionRoute
 
   def handle_server_event(
         %{event: :missions_updated, payload: map_id},
@@ -159,44 +158,6 @@ defmodule WandererAppWeb.MapMissionsEventHandler do
 
       {:error, reason} ->
         Logger.error("[MapMissionsEventHandler] clear_all_in_system error: #{inspect(reason)}")
-        {:reply, %{status: "error"}, socket}
-    end
-  end
-
-  def handle_ui_event(
-        "get_route",
-        _event,
-        %{
-          assigns: %{
-            map_id: map_id
-          }
-        } = socket
-      ) do
-    case AgentMissionRoute.get_route(map_id) do
-      {:ok, route} ->
-        {:reply, %{names: route.names, ids: route.ids}, socket}
-
-      {:error, _} ->
-        {:reply, %{names: [], ids: []}, socket}
-    end
-  end
-
-  def handle_ui_event(
-        "save_route",
-        %{"system_names" => system_names},
-        %{
-          assigns: %{
-            map_id: map_id,
-            user_permissions: %{update_system: true}
-          }
-        } = socket
-      ) do
-    case AgentMissionRoute.save_route(map_id, system_names) do
-      {:ok, %{saved_count: saved_count, skipped: skipped}} ->
-        {:reply, %{status: "ok", saved_count: saved_count, skipped: skipped}, socket}
-
-      {:error, reason} ->
-        Logger.error("[MapMissionsEventHandler] save_route error: #{inspect(reason)}")
         {:reply, %{status: "error"}, socket}
     end
   end
