@@ -4,6 +4,7 @@ import { Widget } from '@/hooks/Mapper/components/mapInterface/components';
 import { OutCommand } from '@/hooks/Mapper/types/mapHandlers';
 import { parseMissions, MissionPair } from '@/hooks/Mapper/helpers/parseMissions';
 import { getCharacterPortraitUrl } from '@/hooks/Mapper/helpers/getEveImageUrl';
+import { ContextMenu } from 'primereact/contextmenu';
 
 interface Mission {
   id: string;
@@ -215,6 +216,18 @@ const MissionsContent: React.FC = () => {
     }
   }, [outCommand, savedRouteIds, userOwnedChars]);
 
+  const handleAddToRoute = useCallback((systemName: string) => {
+    setSavedRouteText(prev => {
+      const lines = prev.split('\n').map(s => s.trim()).filter(Boolean);
+      if (lines.includes(systemName)) {
+        setRouteFeedback(`${systemName} is already in the route`);
+        return prev;
+      }
+      setRouteFeedback(`Added ${systemName} — remember to Save`);
+      return lines.length > 0 ? prev.trimEnd() + '\n' + systemName : systemName;
+    });
+  }, []);
+
   const systemGroups = useMemo<SystemGroup[]>(() => {
     const active = missions.filter(m => m.status === 'active');
     const bySystem = new Map<string, SystemGroup>();
@@ -299,6 +312,7 @@ const MissionsContent: React.FC = () => {
             charNameById={charNameById}
             onClearCharacter={handleClearCharacter}
             onClearAll={handleClearAll}
+            onAddToRoute={handleAddToRoute}
           />
         ))}
       </div>
@@ -341,15 +355,24 @@ interface SystemCardProps {
   charNameById: Map<string, string>;
   onClearCharacter: (charId: string, systemName: string) => void;
   onClearAll: (systemName: string) => void;
+  onAddToRoute: (systemName: string) => void;
 }
 
-const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCharacter, onClearAll }) => {
+const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCharacter, onClearAll, onAddToRoute }) => {
+  const cm = useRef<ContextMenu>(null);
+  const ctxItems = useMemo(
+    () => [{ label: 'Add to Saved Route', icon: 'pi pi-map', command: () => onAddToRoute(group.system_name) }],
+    [group.system_name, onAddToRoute],
+  );
   const charEntries = Array.from(group.byChar.entries());
   const totalCount = charEntries.reduce((sum, [, ms]) => sum + ms.reduce((s, m) => s + (m.mission_count ?? 1), 0), 0);
 
   return (
     <div className="bg-neutral-800 rounded border border-gray-600 border-opacity-20 overflow-hidden">
-      <div className="flex items-center justify-between px-2 py-1.5 bg-neutral-700 bg-opacity-40">
+      <div
+        className="flex items-center justify-between px-2 py-1.5 bg-neutral-700 bg-opacity-40 cursor-context-menu"
+        onContextMenu={e => cm.current?.show(e)}
+      >
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-gray-100 truncate">{group.system_name}</span>
@@ -395,6 +418,7 @@ const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCha
           );
         })}
       </div>
+      <ContextMenu ref={cm} model={ctxItems} />
     </div>
   );
 };
