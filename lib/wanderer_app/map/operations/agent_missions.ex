@@ -51,10 +51,12 @@ defmodule WandererApp.Map.Operations.AgentMissions do
     with {:ok, parsed} <- Parser.parse(bookmark_text) do
       {created, skipped} =
         parsed
-        |> Enum.reduce({[], []}, fn mission, {acc_created, acc_skipped} ->
-          case resolve_and_create(map_id, character_eve_id, mission) do
+        |> Enum.reject(fn m -> m.mission_type == :home_base end)
+        |> Enum.group_by(fn m -> {m.system_name, m.mission_type, m.datetime_str} end)
+        |> Enum.reduce({[], []}, fn {_key, [first | _] = group}, {acc_created, acc_skipped} ->
+          case resolve_and_create(map_id, character_eve_id, first, length(group)) do
             {:ok, record} -> {[mission_to_map(record) | acc_created], acc_skipped}
-            {:skip, reason} -> {acc_created, [Map.put(mission, :skip_reason, reason) | acc_skipped]}
+            {:skip, reason} -> {acc_created, [Map.put(first, :skip_reason, reason) | acc_skipped]}
           end
         end)
 
@@ -124,7 +126,7 @@ defmodule WandererApp.Map.Operations.AgentMissions do
 
   # --- Private ---
 
-  defp resolve_and_create(map_id, character_eve_id, %{system_name: system_name} = parsed) do
+  defp resolve_and_create(map_id, character_eve_id, %{system_name: system_name} = parsed, mission_count) do
     case CachedInfo.get_system_id_by_name(system_name) do
       {:ok, solar_system_id} ->
         attrs = %{
@@ -136,6 +138,8 @@ defmodule WandererApp.Map.Operations.AgentMissions do
           region: parsed.region,
           mission_name: parsed.mission_name,
           mission_type: Atom.to_string(parsed.mission_type),
+          mission_datetime: parsed.datetime_str,
+          mission_count: mission_count,
           status: "active",
           deleted: false
         }

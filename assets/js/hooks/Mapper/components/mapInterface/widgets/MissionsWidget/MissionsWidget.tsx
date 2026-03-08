@@ -14,6 +14,8 @@ interface Mission {
   region: string;
   status: string;
   character_eve_id: string;
+  mission_count: number;
+  mission_datetime: string;
 }
 
 interface SystemGroup {
@@ -218,7 +220,7 @@ interface SystemCardProps {
 
 const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCharacter, onClearAll }) => {
   const charEntries = Array.from(group.byChar.entries());
-  const totalCount = charEntries.reduce((sum, [, ms]) => sum + ms.length, 0);
+  const totalCount = charEntries.reduce((sum, [, ms]) => sum + ms.reduce((s, m) => s + (m.mission_count ?? 1), 0), 0);
 
   return (
     <div className="bg-neutral-800 rounded border border-gray-600 border-opacity-20 overflow-hidden">
@@ -242,7 +244,9 @@ const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCha
       </div>
 
       <div className="flex flex-col divide-y divide-gray-700 divide-opacity-30">
-        {charEntries.map(([charId, charMissions]) => (
+        {charEntries.map(([charId, charMissions]) => {
+          const missionCount = charMissions.reduce((s, m) => s + (m.mission_count ?? 1), 0);
+          return (
           <div key={charId} className="flex items-center gap-2 px-2 py-1.5">
             <img
               src={getCharacterPortraitUrl(charId, 32)}
@@ -252,7 +256,7 @@ const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCha
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-gray-200 truncate text-[11px]">{charNameById.get(charId) ?? charId}</span>
               <span className="text-stone-400 text-[10px]">
-                {charMissions.length} mission{charMissions.length !== 1 ? 's' : ''}
+                {missionCount} mission{missionCount !== 1 ? 's' : ''}
               </span>
             </div>
             <button
@@ -263,7 +267,8 @@ const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCha
               Clear
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
