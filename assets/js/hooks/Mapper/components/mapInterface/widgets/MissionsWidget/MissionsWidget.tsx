@@ -16,6 +16,7 @@ interface Mission {
   character_eve_id: string;
   mission_count: number;
   mission_datetime: string;
+  solar_system_id: number;
 }
 
 interface SystemGroup {
@@ -28,7 +29,7 @@ interface SystemGroup {
 const WINDOW_ID = 'missions-widget';
 
 const MissionsContent: React.FC = () => {
-  const { outCommand, data } = useMapRootState();
+  const { outCommand, update, data } = useMapRootState();
   const { characters, userCharacters } = data;
 
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -38,6 +39,11 @@ const MissionsContent: React.FC = () => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [preview, setPreview] = useState<MissionPair[]>([]);
   const didLoad = useRef(false);
+  const [savedRouteText, setSavedRouteText] = useState('');
+  const [savedRouteIds, setSavedRouteIds] = useState<number[]>([]);
+  const [isSavingRoute, setIsSavingRoute] = useState(false);
+  const [isApplyingRoute, setIsApplyingRoute] = useState(false);
+  const [routeFeedback, setRouteFeedback] = useState<string | null>(null);
 
   const userOwnedChars = useMemo(
     () => characters.filter(c => userCharacters.includes(c.eve_id)),
@@ -49,6 +55,16 @@ const MissionsContent: React.FC = () => {
     for (const c of characters) map.set(c.eve_id, c.name);
     return map;
   }, [characters]);
+
+  const missionCountByChar = useMemo<Map<string, number>>(() => {
+    const counts = new Map<string, number>();
+    for (const m of missions) {
+      if (m.status === 'active') {
+        counts.set(m.character_eve_id, (counts.get(m.character_eve_id) ?? 0) + (m.mission_count ?? 1));
+      }
+    }
+    return counts;
+  }, [missions]);
 
   useEffect(() => {
     if (!selectedCharId && userOwnedChars.length > 0) {
@@ -62,7 +78,28 @@ const MissionsContent: React.FC = () => {
         type: OutCommand.getMissions,
         data: {},
       });
-      setMissions(resp.missions ?? []);
+      const activeMissions = resp.missions ?? [];
+      setMissions(activeMissions);
+      const bySystem: Record<number, number> = {};
+      for (const m of activeMissions) {
+        if (m.status === 'active') {
+          bySystem[m.solar_system_id] = (bySystem[m.solar_system_id] ?? 0) + (m.mission_count ?? 1);
+        }
+      }
+      update({ activeMissionsBySystem: bySystem });
+    } catch {
+      // ignore
+    }
+  }, [outCommand, update]);
+
+  const loadRoute = useCallback(async () => {
+    try {
+      const resp = await outCommand<{ names: string[]; ids: number[] }>({
+        type: OutCommand.getRoute,
+        data: {},
+      });
+      setSavedRouteText((resp.names ?? []).join('\n'));
+      setSavedRouteIds(resp.ids ?? []);
     } catch {
       // ignore
     }
@@ -72,8 +109,9 @@ const MissionsContent: React.FC = () => {
     if (!didLoad.current) {
       didLoad.current = true;
       loadMissions();
+      loadRoute();
     }
-  }, [loadMissions]);
+  }, [loadMissions, loadRoute]);
 
   useEffect(() => {
     if (!pasteText.trim()) { setPreview([]); return; }
@@ -125,6 +163,58 @@ const MissionsContent: React.FC = () => {
     [outCommand, loadMissions],
   );
 
+  const handleSaveRoute = useCallback(async () => {
+    const names = savedRouteText
+      .split('\n')
+      .map(s => s.trim())
+      .filter(Boolean);
+    if (!names.length) return;
+    setIsSavingRoute(true);
+    setRouteFeedback(null);
+    try {
+      const resp = await outCommand<{ status: string; saved_count: number; skipped: string[] }>({
+        type: OutCommand.saveRoute,
+        data: { system_names: names },
+      });
+      if (resp.status === 'ok') {
+        const skippedMsg = resp.skipped?.length ? `; unknown: ${resp.skipped.join(', ')}` : '';
+        setRouteFeedback(`Saved ${resp.saved_count} system${resp.saved_count !== 1 ? 's' : ''}${skippedMsg}`);
+        await loadRoute();
+      } else {
+        setRouteFeedback('Error saving route');
+      }
+    } catch {
+      setRouteFeedback('Failed to save');
+    } finally {
+      setIsSavingRoute(false);
+    }
+  }, [outCommand, savedRouteText, loadRoute]);
+
+  const handleApplyRoute = useCallback(async () => {
+    if (!savedRouteIds.length || !userOwnedChars.length) return;
+    setIsApplyingRoute(true);
+    setRouteFeedback(null);
+    try {
+      const charIds = userOwnedChars.map(c => c.eve_id);
+      for (let i = 0; i < savedRouteIds.length; i++) {
+        await outCommand({
+          type: OutCommand.setAutopilotWaypoint,
+          data: {
+            character_eve_ids: charIds,
+            destination_id: savedRouteIds[i],
+            add_to_beginning: false,
+            clear_other_waypoints: i === 0,
+          },
+        });
+      }
+      setRouteFeedback(`Route applied: ${savedRouteIds.length} waypoint${savedRouteIds.length !== 1 ? 's' : ''}`);
+    } catch {
+      setRouteFeedback('Failed to apply route');
+    } finally {
+      setIsApplyingRoute(false);
+    }
+  }, [outCommand, savedRouteIds, userOwnedChars]);
+
   const systemGroups = useMemo<SystemGroup[]>(() => {
     const active = missions.filter(m => m.status === 'active');
     const bySystem = new Map<string, SystemGroup>();
@@ -153,14 +243,19 @@ const MissionsContent: React.FC = () => {
                 title={c.name}
                 onClick={() => setSelectedCharId(c.eve_id)}
                 className={[
-                  'relative rounded overflow-hidden shrink-0 w-10 h-10',
+                  'relative rounded overflow-visible shrink-0 w-10 h-10',
                   'ring-2 ring-offset-1 ring-offset-neutral-900 transition-all',
                   selectedCharId === c.eve_id
                     ? 'ring-blue-500 opacity-100'
                     : 'ring-transparent opacity-50 hover:opacity-90',
                 ].join(' ')}
               >
-                <img src={getCharacterPortraitUrl(c.eve_id, 64)} alt={c.name} className="w-full h-full object-cover" />
+                <img src={getCharacterPortraitUrl(c.eve_id, 64)} alt={c.name} className="w-full h-full object-cover rounded" />
+                {(missionCountByChar.get(c.eve_id) ?? 0) > 0 && (
+                  <span className="absolute bottom-0 right-0 bg-blue-600 text-white text-[8px] leading-none rounded px-[3px] py-[1px] font-bold pointer-events-none">
+                    {missionCountByChar.get(c.eve_id)}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -206,6 +301,36 @@ const MissionsContent: React.FC = () => {
             onClearAll={handleClearAll}
           />
         ))}
+      </div>
+
+      <div className="border-t border-gray-600 border-opacity-30" />
+
+      {/* Saved Route */}
+      <div className="flex flex-col gap-1.5">
+        <div className="text-stone-400 uppercase tracking-wide text-[10px]">Saved Route</div>
+        <textarea
+          className="w-full bg-neutral-800 border border-gray-600 text-gray-200 rounded px-1 py-0.5 text-xs resize-y min-h-[60px]"
+          placeholder="One system name per line\u2026"
+          value={savedRouteText}
+          onChange={e => setSavedRouteText(e.target.value)}
+        />
+        <div className="flex gap-1.5 justify-end">
+          <button
+            className="px-2 py-0.5 bg-neutral-700 hover:bg-neutral-600 disabled:opacity-40 text-white rounded text-xs"
+            disabled={isSavingRoute || !savedRouteText.trim()}
+            onClick={handleSaveRoute}
+          >
+            {isSavingRoute ? 'Saving\u2026' : 'Save'}
+          </button>
+          <button
+            className="px-2 py-0.5 bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white rounded text-xs"
+            disabled={isApplyingRoute || !savedRouteIds.length || !userOwnedChars.length}
+            onClick={handleApplyRoute}
+          >
+            {isApplyingRoute ? 'Applying\u2026' : 'Apply Route'}
+          </button>
+        </div>
+        {routeFeedback && <div className="text-stone-300 text-[10px]">{routeFeedback}</div>}
       </div>
     </div>
   );
