@@ -186,6 +186,7 @@ defmodule WandererApp.CachedInfo do
         {:error, :cache_error}
     end
   end
+
   def get_wormhole_types() do
     case WandererApp.Cache.lookup(:wormhole_types) do
       {:ok, nil} ->
