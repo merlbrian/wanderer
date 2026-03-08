@@ -165,7 +165,7 @@ defmodule WandererApp.CachedInfo do
 
     case Cachex.get(:system_static_info_cache, cache_key) do
       {:ok, nil} ->
-        case WandererApp.Api.MapSolarSystem.find_by_exact_name(name: name) do
+        case WandererApp.Api.MapSolarSystem.find_by_exact_name(%{name: name}) do
           {:ok, [%{solar_system_id: id} | _]} ->
             Cachex.put(:system_static_info_cache, cache_key, id)
             {:ok, id}
