@@ -307,6 +307,8 @@ export enum OutCommand {
   pasteMissions = 'paste_missions',
   completeMission = 'complete_mission',
   deleteMission = 'delete_mission',
+  clearCharacterInSystem = 'clear_character_in_system',
+  clearAllInSystem = 'clear_all_in_system',
 }
 
 export type OutCommandHandler = <T = unknown>(event: { type: OutCommand; data: unknown }) => Promise<T>;

@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMapRootState } from '@/hooks/Mapper/mapRootProvider';
 import { Widget } from '@/hooks/Mapper/components/mapInterface/components';
 import { OutCommand } from '@/hooks/Mapper/types/mapHandlers';
 import { parseMissions, MissionPair } from '@/hooks/Mapper/helpers/parseMissions';
+import { getCharacterPortraitUrl } from '@/hooks/Mapper/helpers/getEveImageUrl';
 
 interface Mission {
   id: string;
@@ -12,6 +13,14 @@ interface Mission {
   constellation: string;
   region: string;
   status: string;
+  character_eve_id: string;
+}
+
+interface SystemGroup {
+  system_name: string;
+  constellation: string;
+  region: string;
+  byChar: Map<string, Mission[]>;
 }
 
 const WINDOW_ID = 'missions-widget';
@@ -28,11 +37,20 @@ const MissionsContent: React.FC = () => {
   const [preview, setPreview] = useState<MissionPair[]>([]);
   const didLoad = useRef(false);
 
-  const userOwnedChars = characters.filter(c => c.eve_id && userCharacters.includes(c.eve_id as string));
+  const userOwnedChars = useMemo(
+    () => characters.filter(c => userCharacters.includes(c.eve_id)),
+    [characters, userCharacters],
+  );
+
+  const charNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of characters) map.set(c.eve_id, c.name);
+    return map;
+  }, [characters]);
 
   useEffect(() => {
     if (!selectedCharId && userOwnedChars.length > 0) {
-      setSelectedCharId(userOwnedChars[0].eve_id as string);
+      setSelectedCharId(userOwnedChars[0].eve_id);
     }
   }, [userOwnedChars, selectedCharId]);
 
@@ -56,10 +74,7 @@ const MissionsContent: React.FC = () => {
   }, [loadMissions]);
 
   useEffect(() => {
-    if (!pasteText.trim()) {
-      setPreview([]);
-      return;
-    }
+    if (!pasteText.trim()) { setPreview([]); return; }
     const { pairs } = parseMissions(pasteText);
     setPreview(pairs);
   }, [pasteText]);
@@ -82,57 +97,71 @@ const MissionsContent: React.FC = () => {
         setFeedback(`Error: ${resp.status}`);
       }
     } catch {
-      setFeedback('Failed to submit missions');
+      setFeedback('Failed to submit');
     } finally {
       setIsSubmitting(false);
     }
   }, [outCommand, pasteText, selectedCharId, loadMissions]);
 
-  const handleComplete = useCallback(
-    async (missionId: string) => {
+  const handleClearCharacter = useCallback(
+    async (charId: string, systemName: string) => {
       try {
-        await outCommand({ type: OutCommand.completeMission, data: { mission_id: missionId } });
+        await outCommand({ type: OutCommand.clearCharacterInSystem, data: { character_eve_id: charId, system_name: systemName } });
         await loadMissions();
-      } catch {
-        // ignore
-      }
+      } catch { /* ignore */ }
     },
     [outCommand, loadMissions],
   );
 
-  const handleDelete = useCallback(
-    async (missionId: string) => {
+  const handleClearAll = useCallback(
+    async (systemName: string) => {
       try {
-        await outCommand({ type: OutCommand.deleteMission, data: { mission_id: missionId } });
+        await outCommand({ type: OutCommand.clearAllInSystem, data: { system_name: systemName } });
         await loadMissions();
-      } catch {
-        // ignore
-      }
+      } catch { /* ignore */ }
     },
     [outCommand, loadMissions],
   );
 
-  const activeMissions = missions.filter(m => m.status === 'active');
-  const completedMissions = missions.filter(m => m.status === 'completed');
+  const systemGroups = useMemo<SystemGroup[]>(() => {
+    const active = missions.filter(m => m.status === 'active');
+    const bySystem = new Map<string, SystemGroup>();
+    for (const m of active) {
+      if (!bySystem.has(m.system_name)) {
+        bySystem.set(m.system_name, { system_name: m.system_name, constellation: m.constellation, region: m.region, byChar: new Map() });
+      }
+      const sys = bySystem.get(m.system_name)!;
+      if (!sys.byChar.has(m.character_eve_id)) sys.byChar.set(m.character_eve_id, []);
+      sys.byChar.get(m.character_eve_id)!.push(m);
+    }
+    return Array.from(bySystem.values());
+  }, [missions]);
 
   return (
     <div className="flex flex-col gap-2 p-2 text-xs h-full overflow-auto custom-scrollbar">
-      {/* Paste section */}
-      <div className="flex flex-col gap-1">
+      {/* Import section */}
+      <div className="flex flex-col gap-1.5">
         <div className="text-stone-400 uppercase tracking-wide text-[10px]">Import Bookmarks</div>
 
-        {userOwnedChars.length > 1 && (
-          <select
-            className="bg-neutral-800 border border-gray-600 text-gray-200 rounded px-1 py-0.5 text-xs"
-            value={selectedCharId}
-            onChange={e => setSelectedCharId(e.target.value)}
-          >
+        {userOwnedChars.length > 0 && (
+          <div className="flex flex-row gap-2 flex-wrap">
             {userOwnedChars.map(c => (
-              <option key={c.eve_id} value={c.eve_id}>
-                {c.name ?? c.eve_id}
-              </option>
+              <button
+                key={c.eve_id}
+                title={c.name}
+                onClick={() => setSelectedCharId(c.eve_id)}
+                className={[
+                  'relative rounded overflow-hidden shrink-0 w-10 h-10',
+                  'ring-2 ring-offset-1 ring-offset-neutral-900 transition-all',
+                  selectedCharId === c.eve_id
+                    ? 'ring-blue-500 opacity-100'
+                    : 'ring-transparent opacity-50 hover:opacity-90',
+                ].join(' ')}
+              >
+                <img src={getCharacterPortraitUrl(c.eve_id, 64)} alt={c.name} className="w-full h-full object-cover" />
+              </button>
             ))}
-          </select>
+          </div>
         )}
 
         <textarea
@@ -144,7 +173,7 @@ const MissionsContent: React.FC = () => {
 
         {preview.length > 0 && (
           <div className="text-stone-400 text-[10px]">
-            Preview: {preview.length} mission pair{preview.length !== 1 ? 's' : ''} detected
+            {preview.length} mission pair{preview.length !== 1 ? 's' : ''} detected
           </div>
         )}
 
@@ -161,74 +190,88 @@ const MissionsContent: React.FC = () => {
 
       <div className="border-t border-gray-600 border-opacity-30" />
 
-      {/* Active missions */}
-      {activeMissions.length === 0 && completedMissions.length === 0 && (
-        <div className="text-stone-500 text-center py-2">No missions yet</div>
+      {systemGroups.length === 0 && (
+        <div className="text-stone-500 text-center py-2">No active missions</div>
       )}
 
-      {activeMissions.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <div className="text-stone-400 uppercase tracking-wide text-[10px]">Active</div>
-          {activeMissions.map(m => (
-            <MissionRow key={m.id} mission={m} onComplete={handleComplete} onDelete={handleDelete} />
-          ))}
-        </div>
-      )}
-
-      {completedMissions.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <div className="text-stone-400 uppercase tracking-wide text-[10px] mt-1">Completed</div>
-          {completedMissions.map(m => (
-            <MissionRow key={m.id} mission={m} onComplete={handleComplete} onDelete={handleDelete} />
-          ))}
-        </div>
-      )}
+      <div className="flex flex-col gap-2">
+        {systemGroups.map(group => (
+          <SystemCard
+            key={group.system_name}
+            group={group}
+            charNameById={charNameById}
+            onClearCharacter={handleClearCharacter}
+            onClearAll={handleClearAll}
+          />
+        ))}
+      </div>
     </div>
   );
 };
 
-interface MissionRowProps {
-  mission: Mission;
-  onComplete: (id: string) => void;
-  onDelete: (id: string) => void;
+interface SystemCardProps {
+  group: SystemGroup;
+  charNameById: Map<string, string>;
+  onClearCharacter: (charId: string, systemName: string) => void;
+  onClearAll: (systemName: string) => void;
 }
 
-const MissionRow: React.FC<MissionRowProps> = ({ mission, onComplete, onDelete }) => (
-  <div className="flex items-center justify-between gap-1 bg-neutral-800 rounded px-1.5 py-1">
-    <div className="flex flex-col min-w-0">
-      <span className="truncate font-medium text-gray-200">{mission.mission_name}</span>
-      <span className="text-stone-400 text-[10px] truncate">
-        {mission.system_name}
-        {mission.constellation ? ` · ${mission.constellation}` : ''}
-        {mission.region ? ` · ${mission.region}` : ''}
-      </span>
-      <span className="text-stone-500 text-[10px]">
-        {mission.mission_type === 'encounter' ? '⚔ Encounter' : '🏠 Home Base'}
-      </span>
-    </div>
-    <div className="flex gap-1 shrink-0">
-      {mission.status === 'active' && (
+const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCharacter, onClearAll }) => {
+  const charEntries = Array.from(group.byChar.entries());
+  const totalCount = charEntries.reduce((sum, [, ms]) => sum + ms.length, 0);
+
+  return (
+    <div className="bg-neutral-800 rounded border border-gray-600 border-opacity-20 overflow-hidden">
+      <div className="flex items-center justify-between px-2 py-1.5 bg-neutral-700 bg-opacity-40">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-gray-100 truncate">{group.system_name}</span>
+            <span className="text-[10px] bg-neutral-600 text-stone-300 rounded px-1 shrink-0">{totalCount}</span>
+          </div>
+          <div className="text-stone-500 text-[10px] truncate">
+            {[group.constellation, group.region].filter(Boolean).join(' · ')}
+          </div>
+        </div>
         <button
-          className="px-1 py-0.5 bg-green-800 hover:bg-green-700 text-white rounded text-[10px]"
-          title="Mark complete"
-          onClick={() => onComplete(mission.id)}
+          className="ml-2 px-1.5 py-0.5 bg-red-900 hover:bg-red-700 text-white rounded text-[10px] shrink-0"
+          title="Clear all missions in this system"
+          onClick={() => onClearAll(group.system_name)}
         >
-          ✓
+          Clear all
         </button>
-      )}
-      <button
-        className="px-1 py-0.5 bg-red-900 hover:bg-red-800 text-white rounded text-[10px]"
-        title="Delete"
-        onClick={() => onDelete(mission.id)}
-      >
-        ✕
-      </button>
+      </div>
+
+      <div className="flex flex-col divide-y divide-gray-700 divide-opacity-30">
+        {charEntries.map(([charId, charMissions]) => (
+          <div key={charId} className="flex items-center gap-2 px-2 py-1.5">
+            <img
+              src={getCharacterPortraitUrl(charId, 32)}
+              alt={charNameById.get(charId) ?? charId}
+              className="w-8 h-8 rounded shrink-0"
+            />
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-gray-200 truncate text-[11px]">{charNameById.get(charId) ?? charId}</span>
+              <span className="text-stone-400 text-[10px]">
+                {charMissions.length} mission{charMissions.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <button
+              className="px-1.5 py-0.5 bg-green-800 hover:bg-green-600 text-white rounded text-[10px] shrink-0"
+              title={`Clear ${charNameById.get(charId) ?? charId}'s missions here`}
+              onClick={() => onClearCharacter(charId, group.system_name)}
+            >
+              Clear
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const MissionsWidget: React.FC = () => (
   <Widget label="Agent Missions" windowId={WINDOW_ID}>
     <MissionsContent />
   </Widget>
 );
+

@@ -122,6 +122,46 @@ defmodule WandererAppWeb.MapMissionsEventHandler do
     end
   end
 
+  def handle_ui_event(
+        "clear_character_in_system",
+        %{"character_eve_id" => character_eve_id, "system_name" => system_name},
+        %{
+          assigns: %{
+            map_id: map_id,
+            user_permissions: %{update_system: true}
+          }
+        } = socket
+      ) do
+    case AgentMissions.complete_missions_for_character_in_system(character_eve_id, map_id, system_name) do
+      :ok ->
+        {:reply, %{status: "ok"}, socket}
+
+      {:error, reason} ->
+        Logger.error("[MapMissionsEventHandler] clear_character_in_system error: #{inspect(reason)}")
+        {:reply, %{status: "error"}, socket}
+    end
+  end
+
+  def handle_ui_event(
+        "clear_all_in_system",
+        %{"system_name" => system_name},
+        %{
+          assigns: %{
+            map_id: map_id,
+            user_permissions: %{update_system: true}
+          }
+        } = socket
+      ) do
+    case AgentMissions.complete_all_missions_in_system(map_id, system_name) do
+      :ok ->
+        {:reply, %{status: "ok"}, socket}
+
+      {:error, reason} ->
+        Logger.error("[MapMissionsEventHandler] clear_all_in_system error: #{inspect(reason)}")
+        {:reply, %{status: "error"}, socket}
+    end
+  end
+
   def handle_ui_event(event, body, socket),
     do: MapCoreEventHandler.handle_ui_event(event, body, socket)
 end
