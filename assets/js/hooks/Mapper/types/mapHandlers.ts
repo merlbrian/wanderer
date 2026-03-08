@@ -309,6 +309,10 @@ export enum OutCommand {
   deleteMission = 'delete_mission',
   clearCharacterInSystem = 'clear_character_in_system',
   clearAllInSystem = 'clear_all_in_system',
+
+  // Fleet management
+  getFleet = 'get_fleet',
+  setWingCommander = 'set_wing_commander',
 }
 
 export type OutCommandHandler = <T = unknown>(event: { type: OutCommand; data: unknown }) => Promise<T>;
