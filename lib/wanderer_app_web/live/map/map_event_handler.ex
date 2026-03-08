@@ -176,7 +176,9 @@ defmodule WandererAppWeb.MapEventHandler do
     "paste_missions",
     "get_missions",
     "complete_mission",
-    "delete_mission"
+    "delete_mission",
+    "clear_character_in_system",
+    "clear_all_in_system"
   ]
 
   def handle_event(socket, %{event: event_name} = event)
