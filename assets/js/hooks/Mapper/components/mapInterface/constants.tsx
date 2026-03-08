@@ -2,6 +2,7 @@ import { WindowProps } from '@/hooks/Mapper/components/ui-kit/WindowManager/type
 import {
   CommentsWidget,
   LocalCharacters,
+  MissionsWidget,
   SystemInfo,
   SystemSignatures,
   SystemStructures,
@@ -11,7 +12,7 @@ import {
   WSystemKills,
 } from '@/hooks/Mapper/components/mapInterface/widgets';
 
-export const CURRENT_WINDOWS_VERSION = 9;
+export const CURRENT_WINDOWS_VERSION = 10;
 export const WINDOWS_LOCAL_STORE_KEY = 'windows:settings:v2';
 
 export enum WidgetsIds {
@@ -24,6 +25,7 @@ export enum WidgetsIds {
   kills = 'kills',
   comments = 'comments',
   userRoutes = 'userRoutes',
+  missions = 'missions',
 }
 
 export const STORED_VISIBLE_WIDGETS_DEFAULT = [
@@ -97,6 +99,13 @@ export const DEFAULT_WIDGETS: WindowProps[] = [
     zIndex: 0,
     content: () => <CommentsWidget />,
   },
+  {
+    id: WidgetsIds.missions,
+    position: { x: 530, y: 10 },
+    size: { width: 300, height: 400 },
+    zIndex: 0,
+    content: () => <MissionsWidget />,
+  },
 ];
 
 type WidgetsCheckboxesType = {
@@ -140,5 +149,9 @@ export const WIDGETS_CHECKBOXES_PROPS: WidgetsCheckboxesType = [
   {
     id: WidgetsIds.comments,
     label: 'Comments',
+  },
+  {
+    id: WidgetsIds.missions,
+    label: 'Agent Missions',
   },
 ];
