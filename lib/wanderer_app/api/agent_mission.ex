@@ -23,6 +23,8 @@ defmodule WandererApp.Api.AgentMission do
       :region,
       :mission_name,
       :mission_type,
+      :mission_datetime,
+      :mission_count,
       :status,
       :deleted
     ])
@@ -60,6 +62,8 @@ defmodule WandererApp.Api.AgentMission do
       :region,
       :mission_name,
       :mission_type,
+      :mission_datetime,
+      :mission_count,
       :status,
       :deleted
     ]
@@ -79,15 +83,14 @@ defmodule WandererApp.Api.AgentMission do
     create :create do
       primary? true
       upsert? true
-      upsert_identity :uniq_char_map_system_type
+      upsert_identity :uniq_char_map_system_type_datetime
 
       upsert_fields [
         :system_name,
         :constellation,
         :region,
         :mission_name,
-        :status,
-        :deleted,
+        :mission_count,
         :updated_at
       ]
 
@@ -101,6 +104,8 @@ defmodule WandererApp.Api.AgentMission do
         :region,
         :mission_name,
         :mission_type,
+        :mission_datetime,
+        :mission_count,
         :status,
         :deleted
       ]
@@ -120,7 +125,7 @@ defmodule WandererApp.Api.AgentMission do
     read :by_map_id do
       argument(:map_id, :uuid, allow_nil?: false)
 
-      filter(expr(map_id == ^arg(:map_id) and deleted == false))
+      filter(expr(map_id == ^arg(:map_id) and deleted == false and status == "active"))
       prepare build(sort: [inserted_at: :asc])
     end
 
@@ -132,7 +137,8 @@ defmodule WandererApp.Api.AgentMission do
         expr(
           character_eve_id == ^arg(:character_eve_id) and
             map_id == ^arg(:map_id) and
-            deleted == false
+            deleted == false and
+            status == "active"
         )
       )
 
@@ -183,6 +189,18 @@ defmodule WandererApp.Api.AgentMission do
       public? true
     end
 
+    attribute :mission_datetime, :string do
+      allow_nil? false
+      default ""
+      public? true
+    end
+
+    attribute :mission_count, :integer do
+      allow_nil? false
+      default 1
+      public? true
+    end
+
     attribute :status, :string do
       allow_nil? false
       default "active"
@@ -208,8 +226,8 @@ defmodule WandererApp.Api.AgentMission do
   end
 
   identities do
-    identity :uniq_char_map_system_type,
-             [:character_eve_id, :map_id, :solar_system_id, :mission_type]
+    identity :uniq_char_map_system_type_datetime,
+             [:character_eve_id, :map_id, :solar_system_id, :mission_type, :mission_datetime]
   end
 
   @derive {Jason.Encoder,
@@ -224,6 +242,8 @@ defmodule WandererApp.Api.AgentMission do
              :region,
              :mission_name,
              :mission_type,
+             :mission_datetime,
+             :mission_count,
              :status,
              :deleted,
              :inserted_at,

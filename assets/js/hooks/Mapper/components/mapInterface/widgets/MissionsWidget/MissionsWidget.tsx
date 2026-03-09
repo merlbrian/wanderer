@@ -14,6 +14,9 @@ interface Mission {
   region: string;
   status: string;
   character_eve_id: string;
+  mission_count: number;
+  mission_datetime: string;
+  solar_system_id: number;
 }
 
 interface SystemGroup {
@@ -26,7 +29,7 @@ interface SystemGroup {
 const WINDOW_ID = 'missions-widget';
 
 const MissionsContent: React.FC = () => {
-  const { outCommand, data } = useMapRootState();
+  const { outCommand, update, data } = useMapRootState();
   const { characters, userCharacters } = data;
 
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -48,6 +51,16 @@ const MissionsContent: React.FC = () => {
     return map;
   }, [characters]);
 
+  const missionCountByChar = useMemo<Map<string, number>>(() => {
+    const counts = new Map<string, number>();
+    for (const m of missions) {
+      if (m.status === 'active') {
+        counts.set(m.character_eve_id, (counts.get(m.character_eve_id) ?? 0) + (m.mission_count ?? 1));
+      }
+    }
+    return counts;
+  }, [missions]);
+
   useEffect(() => {
     if (!selectedCharId && userOwnedChars.length > 0) {
       setSelectedCharId(userOwnedChars[0].eve_id);
@@ -60,11 +73,19 @@ const MissionsContent: React.FC = () => {
         type: OutCommand.getMissions,
         data: {},
       });
-      setMissions(resp.missions ?? []);
+      const activeMissions = resp.missions ?? [];
+      setMissions(activeMissions);
+      const bySystem: Record<number, number> = {};
+      for (const m of activeMissions) {
+        if (m.status === 'active') {
+          bySystem[m.solar_system_id] = (bySystem[m.solar_system_id] ?? 0) + (m.mission_count ?? 1);
+        }
+      }
+      update({ activeMissionsBySystem: bySystem });
     } catch {
       // ignore
     }
-  }, [outCommand]);
+  }, [outCommand, update]);
 
   useEffect(() => {
     if (!didLoad.current) {
@@ -151,14 +172,19 @@ const MissionsContent: React.FC = () => {
                 title={c.name}
                 onClick={() => setSelectedCharId(c.eve_id)}
                 className={[
-                  'relative rounded overflow-hidden shrink-0 w-10 h-10',
+                  'relative rounded overflow-visible shrink-0 w-10 h-10',
                   'ring-2 ring-offset-1 ring-offset-neutral-900 transition-all',
                   selectedCharId === c.eve_id
                     ? 'ring-blue-500 opacity-100'
                     : 'ring-transparent opacity-50 hover:opacity-90',
                 ].join(' ')}
               >
-                <img src={getCharacterPortraitUrl(c.eve_id, 64)} alt={c.name} className="w-full h-full object-cover" />
+                <img src={getCharacterPortraitUrl(c.eve_id, 64)} alt={c.name} className="w-full h-full object-cover rounded" />
+                {(missionCountByChar.get(c.eve_id) ?? 0) > 0 && (
+                  <span className="absolute bottom-0 right-0 bg-blue-600 text-white text-[8px] leading-none rounded px-[3px] py-[1px] font-bold pointer-events-none">
+                    {missionCountByChar.get(c.eve_id)}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -205,6 +231,7 @@ const MissionsContent: React.FC = () => {
           />
         ))}
       </div>
+
     </div>
   );
 };
@@ -218,11 +245,13 @@ interface SystemCardProps {
 
 const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCharacter, onClearAll }) => {
   const charEntries = Array.from(group.byChar.entries());
-  const totalCount = charEntries.reduce((sum, [, ms]) => sum + ms.length, 0);
+  const totalCount = charEntries.reduce((sum, [, ms]) => sum + ms.reduce((s, m) => s + (m.mission_count ?? 1), 0), 0);
 
   return (
     <div className="bg-neutral-800 rounded border border-gray-600 border-opacity-20 overflow-hidden">
-      <div className="flex items-center justify-between px-2 py-1.5 bg-neutral-700 bg-opacity-40">
+      <div
+        className="flex items-center justify-between px-2 py-1.5 bg-neutral-700 bg-opacity-40"
+      >
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-gray-100 truncate">{group.system_name}</span>
@@ -242,7 +271,9 @@ const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCha
       </div>
 
       <div className="flex flex-col divide-y divide-gray-700 divide-opacity-30">
-        {charEntries.map(([charId, charMissions]) => (
+        {charEntries.map(([charId, charMissions]) => {
+          const missionCount = charMissions.reduce((s, m) => s + (m.mission_count ?? 1), 0);
+          return (
           <div key={charId} className="flex items-center gap-2 px-2 py-1.5">
             <img
               src={getCharacterPortraitUrl(charId, 32)}
@@ -252,7 +283,7 @@ const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCha
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-gray-200 truncate text-[11px]">{charNameById.get(charId) ?? charId}</span>
               <span className="text-stone-400 text-[10px]">
-                {charMissions.length} mission{charMissions.length !== 1 ? 's' : ''}
+                {missionCount} mission{missionCount !== 1 ? 's' : ''}
               </span>
             </div>
             <button
@@ -263,7 +294,8 @@ const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCha
               Clear
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

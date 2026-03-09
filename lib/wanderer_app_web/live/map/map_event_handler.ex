@@ -8,6 +8,7 @@ defmodule WandererAppWeb.MapEventHandler do
     MapCharactersEventHandler,
     MapConnectionsEventHandler,
     MapCoreEventHandler,
+    MapFleetEventHandler,
     MapMissionsEventHandler,
     MapRoutesEventHandler,
     MapSignaturesEventHandler,
@@ -181,6 +182,11 @@ defmodule WandererAppWeb.MapEventHandler do
     "clear_all_in_system"
   ]
 
+  @map_fleet_ui_events [
+    "get_fleet",
+    "set_wing_commander"
+  ]
+
   def handle_event(socket, %{event: event_name} = event)
       when event_name in @map_characters_events,
       do: MapCharactersEventHandler.handle_server_event(event, socket)
@@ -296,6 +302,10 @@ defmodule WandererAppWeb.MapEventHandler do
   def handle_ui_event(event, body, socket)
       when event in @map_missions_ui_events,
       do: MapMissionsEventHandler.handle_ui_event(event, body, socket)
+
+  def handle_ui_event(event, body, socket)
+      when event in @map_fleet_ui_events,
+      do: MapFleetEventHandler.handle_ui_event(event, body, socket)
 
   def handle_ui_event(
         event,
