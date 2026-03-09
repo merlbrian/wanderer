@@ -16,7 +16,7 @@ const ROLE_LABELS: Record<FleetRole, string> = {
 
 const FleetContent: React.FC = () => {
   const { outCommand, data } = useMapRootState();
-  const { characters, userCharacters, activeMissionsBySystem } = data;
+  const { characters, userCharacters, activeMissionsBySystem, selectedSystems } = data;
 
   const [fleetInfo, setFleetInfo] = useState<FleetInfo | null>(null);
   const [fleetError, setFleetError] = useState<string | null>(null);
@@ -26,11 +26,37 @@ const FleetContent: React.FC = () => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const didLoad = useRef(false);
 
-  // The user's own EVE characters (with location data)
-  const userOwnedChars = useMemo(
-    () => characters.filter(c => userCharacters.includes(c.eve_id)),
-    [characters, userCharacters],
-  );
+  // The currently selected map system (as a numeric ID)
+  const selectedSystemId = useMemo(() => {
+    const [first] = selectedSystems;
+    if (!first) return null;
+    const n = parseInt(first, 10);
+    return isNaN(n) ? null : n;
+  }, [selectedSystems]);
+
+  const selectedSystemMissionCount = selectedSystemId != null
+    ? (activeMissionsBySystem?.[selectedSystemId] ?? 0)
+    : 0;
+
+  const ROLE_ORDER: Record<FleetRole, number> = {
+    fleet_commander: 0,
+    wing_commander: 1,
+    squad_commander: 2,
+    squad_member: 3,
+  };
+
+  // The user's own EVE characters (with location data), boss always first
+  const userOwnedChars = useMemo(() => {
+    const owned = characters.filter(c => userCharacters.includes(c.eve_id));
+    if (!fleetInfo) return owned;
+    return [...owned].sort((a, b) => {
+      const aMember = fleetInfo.members.find(m => m.character_id === parseInt(a.eve_id, 10));
+      const bMember = fleetInfo.members.find(m => m.character_id === parseInt(b.eve_id, 10));
+      const aOrder = aMember ? (ROLE_ORDER[aMember.role] ?? 4) : 4;
+      const bOrder = bMember ? (ROLE_ORDER[bMember.role] ?? 4) : 4;
+      return aOrder - bOrder;
+    });
+  }, [characters, userCharacters, fleetInfo]);
 
   // Build a name→eve_id map for fleet members (fleet returns integer character_ids)
   const charById = useMemo(() => {
@@ -202,9 +228,10 @@ const FleetContent: React.FC = () => {
             const member = fleetInfo.members.find(m => m.character_id === numericId);
             const location = ownedChar.location;
             const sysId = location?.solar_system_id ?? null;
-            const sysName = sysId ? (systemNameById.get(sysId) ?? `#${sysId}`) : '—';
-            const hasMissions = sysId != null && (activeMissionsBySystem?.[sysId] ?? 0) > 0;
-            const missionCount = sysId != null ? (activeMissionsBySystem?.[sysId] ?? 0) : 0;
+            const sysName = sysId ? (systemNameById.get(sysId) ?? '—') : '—';
+            const isInSelectedSystem = selectedSystemId != null && sysId === selectedSystemId;
+            const hasMissions = isInSelectedSystem && selectedSystemMissionCount > 0;
+            const missionCount = selectedSystemMissionCount;
             const role: FleetRole = member?.role ?? 'squad_member';
             const isWingCdr = role === 'wing_commander';
             const isPromoting = promotingId === numericId;
