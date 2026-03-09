@@ -301,6 +301,18 @@ export enum OutCommand {
   unlinkSignature = 'unlink_signature',
   searchSystems = 'search_systems',
   undoDeleteSignatures = 'undo_delete_signatures',
+
+  // Agent missions
+  getMissions = 'get_missions',
+  pasteMissions = 'paste_missions',
+  completeMission = 'complete_mission',
+  deleteMission = 'delete_mission',
+  clearCharacterInSystem = 'clear_character_in_system',
+  clearAllInSystem = 'clear_all_in_system',
+
+  // Fleet management
+  getFleet = 'get_fleet',
+  setWingCommander = 'set_wing_commander',
 }
 
 export type OutCommandHandler = <T = unknown>(event: { type: OutCommand; data: unknown }) => Promise<T>;

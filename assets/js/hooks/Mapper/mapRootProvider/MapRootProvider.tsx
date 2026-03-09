@@ -57,6 +57,7 @@ export type MapRootData = MapUnionTypes & {
   loadingPublicRoutes: boolean;
   map_slug: string | null;
   expiredCharacters: string[];
+  activeMissionsBySystem: Record<number, number>;
 };
 
 const INITIAL_DATA: MapRootData = {
@@ -104,6 +105,7 @@ const INITIAL_DATA: MapRootData = {
   loadingPublicRoutes: false,
   map_slug: null,
   expiredCharacters: [],
+  activeMissionsBySystem: {},
 };
 
 export enum InterfaceStoredSettingsProps {

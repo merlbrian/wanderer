@@ -29,6 +29,30 @@ defmodule WandererApp.Esi.ApiClient do
 
   def get_server_status, do: do_get("/status", [], @cache_opts)
 
+  # Fleet management
+  def get_character_fleet(character_eve_id, opts \\ []),
+    do: get_character_auth_data(character_eve_id, "fleet", opts)
+
+  def get_fleet_members(fleet_id, opts \\ []),
+    do:
+      do_get(
+        "/fleets/#{fleet_id}/members/",
+        [params: []] ++ get_auth_opts(opts),
+        opts |> with_refresh_token()
+      )
+
+  def move_fleet_member(fleet_id, member_id, role, wing_id, squad_id, opts \\ []),
+    do:
+      do_put_esi(
+        "/fleets/#{fleet_id}/members/#{member_id}/",
+        get_auth_opts(opts)
+        |> Keyword.merge(
+          json:
+            %{role: role, wing_id: wing_id, squad_id: squad_id}
+            |> Map.reject(fn {_k, v} -> is_nil(v) end)
+        )
+      )
+
   def set_autopilot_waypoint(add_to_beginning, clear_other_waypoints, destination_id, opts \\ []),
     do:
       do_post_esi(
@@ -687,7 +711,38 @@ defmodule WandererApp.Esi.ApiClient do
         {:error, "Request failed"}
     end
   end
+  defp do_put_esi(url, opts, pool \\ @general_pool) do
+    try do
+      req_opts =
+        (opts |> with_user_agent_opts() |> Keyword.merge(@retry_opts)) ++
+          [params: opts[:params] || []]
 
+      Req.new(req_options_for_pool(pool) ++ req_opts)
+      |> Req.put(url: url)
+      |> case do
+        {:ok, %{status: status}} when status in [200, 204] ->
+          :ok
+
+        {:ok, %{status: 403}} ->
+          {:error, :forbidden}
+
+        {:ok, %{status: 404}} ->
+          {:error, :not_found}
+
+        {:ok, %{status: status, body: body}} ->
+          Logger.warning("ESI PUT #{url} returned #{status}: #{inspect(body)}")
+          {:error, {:unexpected_status, status}}
+
+        {:error, reason} ->
+          Logger.error("ESI PUT #{url} failed: #{inspect(reason)}")
+          {:error, reason}
+      end
+    rescue
+      e ->
+        Logger.error("ESI PUT #{url} exception: #{inspect(e)}")
+        {:error, "Request failed"}
+    end
+  end
   defp do_get_retry(path, api_opts, opts, status \\ :forbidden, pool \\ @general_pool) do
     refresh_token? = opts |> Keyword.get(:refresh_token?, false)
     retry_count = opts |> Keyword.get(:retry_count, 0)

@@ -36,4 +36,10 @@ defmodule WandererApp.Esi do
                 opts \\ []
               ),
               to: WandererApp.Esi.ApiClient
+
+  defdelegate get_character_fleet(character_eve_id, opts \\ []), to: WandererApp.Esi.ApiClient
+  defdelegate get_fleet_members(fleet_id, opts \\ []), to: WandererApp.Esi.ApiClient
+
+  defdelegate move_fleet_member(fleet_id, member_id, role, wing_id, squad_id, opts \\ []),
+    to: WandererApp.Esi.ApiClient
 end

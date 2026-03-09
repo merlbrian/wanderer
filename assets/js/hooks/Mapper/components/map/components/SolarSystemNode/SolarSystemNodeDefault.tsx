@@ -18,6 +18,7 @@ import { Tag } from 'primereact/tag';
 import { LocalCounter } from '@/hooks/Mapper/components/map/components/LocalCounter';
 import { KillsCounter } from '@/hooks/Mapper/components/map/components/KillsCounter';
 import { useLocalCounter } from '@/hooks/Mapper/components/hooks/useLocalCounter.ts';
+import { useMapRootState } from '@/hooks/Mapper/mapRootProvider';
 
 // let render = 0;
 export const SolarSystemNodeDefault = memo((props: NodeProps<MapSolarSystemType>) => {
@@ -27,6 +28,9 @@ export const SolarSystemNodeDefault = memo((props: NodeProps<MapSolarSystemType>
   const { killsCount: localKillsCount, killsActivityType: localKillsActivityType } = useNodeKillsCount(
     nodeVars.solarSystemId,
   );
+
+  const { data: mapData } = useMapRootState();
+  const missionCount = (mapData.activeMissionsBySystem ?? {})[Number(nodeVars.solarSystemId)] ?? 0;
 
   // console.log('JOipP', `render ${nodeVars.id}`, render++);
 
@@ -55,6 +59,15 @@ export const SolarSystemNodeDefault = memo((props: NodeProps<MapSolarSystemType>
                 <span className={clsx(classes.text)}>{localKillsCount}</span>
               </div>
             </KillsCounter>
+          )}
+
+          {missionCount > 0 && (
+            <div className={clsx(classes.Bookmark, 'bg-violet-800')}>
+              <div className={clsx(classes.BookmarkWithIcon)}>
+                <span className={clsx(PrimeIcons.BRIEFCASE, classes.icon)} />
+                <span className={clsx(classes.text)}>{missionCount}</span>
+              </div>
+            </div>
           )}
 
           {nodeVars.labelCustom !== '' && (
