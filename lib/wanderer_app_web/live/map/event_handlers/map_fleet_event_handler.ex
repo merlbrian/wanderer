@@ -3,7 +3,7 @@ defmodule WandererAppWeb.MapFleetEventHandler do
   use Phoenix.Component
   require Logger
 
-  alias WandererAppWeb.{MapEventHandler, MapCoreEventHandler}
+  alias WandererAppWeb.MapCoreEventHandler
   alias WandererApp.Character.Fleet
 
   @doc """
@@ -46,18 +46,6 @@ defmodule WandererAppWeb.MapFleetEventHandler do
     end
   end
 
-  @doc """
-  Promotes `target_character_eve_id` to wing_commander of Wing 1 (the first wing_id
-  found in the fleet), demoting whichever member currently holds wing_commander.
-  Authenticated as `boss_character_eve_id` (who must have the fleet scope token).
-
-  Request payload:
-    %{"fleet_id" => integer,
-      "target_character_eve_id" => string,
-      "boss_character_eve_id"   => string}
-
-  Reply: %{status: "ok"} | %{status: "error", reason: string}
-  """
   def handle_ui_event(
         "set_wing_commander",
         %{
