@@ -66,23 +66,24 @@ defmodule WandererAppWeb.MapFleetEventHandler do
         "set_wing_commander",
         %{
           "fleet_id" => fleet_id,
-          "target_character_eve_id" => target_eve_id,
-          "boss_character_eve_id" => boss_eve_id
+          "target_character_eve_id" => target_eve_id
         },
         %{assigns: %{current_user: current_user}} = socket
       ) do
-    boss_char = find_character(current_user, boss_eve_id)
-    target_char = find_character(current_user, target_eve_id)
+    # Find the first user-owned character that has fleet scope and can act as boss
+    boss_char =
+      current_user.characters
+      |> Enum.find(fn %{id: char_id} ->
+        case WandererApp.Character.get_character(char_id) do
+          {:ok, char} -> WandererApp.Character.has_fleet_access?(char)
+          _ -> false
+        end
+      end)
 
-    cond do
-      is_nil(boss_char) ->
-        {:reply, %{status: "error", reason: "boss character not found"}, socket}
-
-      is_nil(target_char) ->
-        {:reply, %{status: "error", reason: "target character not found"}, socket}
-
-      true ->
-        do_set_wing_commander(socket, fleet_id, boss_char.id, target_eve_id)
+    if is_nil(boss_char) do
+      {:reply, %{status: "error", reason: "no character with fleet scope found"}, socket}
+    else
+      do_set_wing_commander(socket, fleet_id, boss_char.id, target_eve_id)
     end
   end
 
@@ -92,10 +93,6 @@ defmodule WandererAppWeb.MapFleetEventHandler do
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
-
-  defp find_character(current_user, eve_id) do
-    current_user.characters |> Enum.find(fn c -> c.eve_id == eve_id end)
-  end
 
   defp do_set_wing_commander(socket, fleet_id, boss_char_id, target_eve_id) do
     # Fetch fresh member list to find wing_id and current wing_commander

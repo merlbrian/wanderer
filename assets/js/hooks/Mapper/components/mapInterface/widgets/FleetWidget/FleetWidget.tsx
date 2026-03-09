@@ -80,17 +80,9 @@ const FleetContent: React.FC = () => {
     }
   }, [loadFleet]);
 
-  // Determine the boss character (first owned char in the fleet — they have the auth token)
-  const bossEveId = useMemo(() => {
-    if (!fleetInfo) return null;
-    const memberIds = new Set(fleetInfo.members.map(m => m.character_id));
-    const found = userOwnedChars.find(c => memberIds.has(parseInt(c.eve_id, 10)));
-    return found?.eve_id ?? null;
-  }, [fleetInfo, userOwnedChars]);
-
   const handlePromote = useCallback(
     async (targetMember: FleetMember) => {
-      if (!fleetInfo || !bossEveId) return;
+      if (!fleetInfo) return;
       setPromotingId(targetMember.character_id);
       setFeedback(null);
 
@@ -113,7 +105,6 @@ const FleetContent: React.FC = () => {
           data: {
             fleet_id: fleetInfo.fleet_id,
             target_character_eve_id: String(targetMember.character_id),
-            boss_character_eve_id: bossEveId,
           },
         });
         if (resp.status === 'ok') {
@@ -130,7 +121,7 @@ const FleetContent: React.FC = () => {
         setPromotingId(null);
       }
     },
-    [fleetInfo, bossEveId, outCommand, charById, loadFleet],
+    [fleetInfo, outCommand, charById, loadFleet],
   );
 
   if (!userOwnedChars.length) {
