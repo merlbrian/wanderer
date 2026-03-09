@@ -135,7 +135,9 @@ const FleetContent: React.FC = () => {
         });
         if (resp.status === 'ok') {
           setFeedback(`${charById.get(targetMember.character_id)?.name ?? targetMember.character_id} promoted`);
-          await loadFleet();
+          // ESI has ~1-2s propagation delay — keep the optimistic update visible,
+          // then sync with the real ESI state once it settles.
+          setTimeout(() => loadFleet(), 2500);
         } else {
           setFeedback(`Error: ${resp.reason ?? 'unknown'}`);
           await loadFleet(); // revert optimistic
