@@ -36,7 +36,7 @@ defmodule WandererAppWeb.MapFleetEventHandler do
           {:ok, %{"fleet_id" => fleet_id} = _info} ->
             case Fleet.get_fleet_members(char_id, fleet_id) do
               {:ok, members} ->
-                {:halt, {:ok, fleet_id, members}}
+                {:halt, {:ok, char_id, fleet_id, members}}
 
               _ ->
                 {:cont, {:error, :not_in_fleet}}
@@ -50,8 +50,9 @@ defmodule WandererAppWeb.MapFleetEventHandler do
     missing_scope_names = Enum.map(missing_scope_chars, & &1.name)
 
     case result do
-      {:ok, fleet_id, members} ->
-        {:reply, %{fleet_id: fleet_id, members: members}, socket}
+      {:ok, boss_char_id, fleet_id, members} ->
+        {:reply, %{fleet_id: fleet_id, members: members},
+         Phoenix.Component.assign(socket, :fleet_boss_char_id, boss_char_id)}
 
       {:error, :not_in_fleet} when missing_scope_chars != [] and fleet_eligible_chars == [] ->
         # All characters lack fleet scope — prompt re-auth
@@ -68,22 +69,14 @@ defmodule WandererAppWeb.MapFleetEventHandler do
           "fleet_id" => fleet_id,
           "target_character_eve_id" => target_eve_id
         },
-        %{assigns: %{current_user: current_user}} = socket
+        %{assigns: assigns} = socket
       ) do
-    # Find the first user-owned character that has fleet scope and can act as boss
-    boss_char =
-      current_user.characters
-      |> Enum.find(fn %{id: char_id} ->
-        case WandererApp.Character.get_character(char_id) do
-          {:ok, char} -> WandererApp.Character.has_fleet_access?(char)
-          _ -> false
-        end
-      end)
+    boss_char_id = Map.get(assigns, :fleet_boss_char_id)
 
-    if is_nil(boss_char) do
-      {:reply, %{status: "error", reason: "no character with fleet scope found"}, socket}
+    if is_nil(boss_char_id) do
+      {:reply, %{status: "error", reason: "fleet not loaded — please refresh the fleet widget first"}, socket}
     else
-      do_set_wing_commander(socket, fleet_id, boss_char.id, target_eve_id)
+      do_set_wing_commander(socket, fleet_id, boss_char_id, target_eve_id)
     end
   end
 
