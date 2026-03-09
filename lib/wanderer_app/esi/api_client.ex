@@ -46,7 +46,11 @@ defmodule WandererApp.Esi.ApiClient do
       do_put_esi(
         "/fleets/#{fleet_id}/members/#{member_id}/",
         get_auth_opts(opts)
-        |> Keyword.merge(json: %{role: role, wing_id: wing_id, squad_id: squad_id})
+        |> Keyword.merge(
+          json:
+            %{role: role, wing_id: wing_id, squad_id: squad_id}
+            |> Map.reject(fn {_k, v} -> is_nil(v) end)
+        )
       )
 
   def set_autopilot_waypoint(add_to_beginning, clear_other_waypoints, destination_id, opts \\ []),
