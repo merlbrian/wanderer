@@ -19,8 +19,18 @@ defmodule WandererAppWeb.MapFleetEventHandler do
         _event,
         %{assigns: %{current_user: current_user}} = socket
       ) do
-    result =
+    # Collect which characters are missing fleet scope, and try the rest for fleet
+    {missing_scope_chars, fleet_eligible_chars} =
       current_user.characters
+      |> Enum.split_with(fn %{id: char_id} ->
+        case WandererApp.Character.get_character(char_id) do
+          {:ok, char} -> not WandererApp.Character.has_fleet_access?(char)
+          _ -> true
+        end
+      end)
+
+    result =
+      fleet_eligible_chars
       |> Enum.reduce_while({:error, :not_in_fleet}, fn %{id: char_id} = _char, _acc ->
         case Fleet.get_fleet_for_character(char_id) do
           {:ok, %{"fleet_id" => fleet_id} = _info} ->
@@ -37,12 +47,18 @@ defmodule WandererAppWeb.MapFleetEventHandler do
         end
       end)
 
+    missing_scope_names = Enum.map(missing_scope_chars, & &1.name)
+
     case result do
       {:ok, fleet_id, members} ->
         {:reply, %{fleet_id: fleet_id, members: members}, socket}
 
+      {:error, :not_in_fleet} when missing_scope_chars != [] and fleet_eligible_chars == [] ->
+        # All characters lack fleet scope — prompt re-auth
+        {:reply, %{error: "missing_scope", characters: missing_scope_names}, socket}
+
       {:error, :not_in_fleet} ->
-        {:reply, %{error: "not_in_fleet"}, socket}
+        {:reply, %{error: "not_in_fleet", missing_scope_characters: missing_scope_names}, socket}
     end
   end
 

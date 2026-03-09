@@ -14,8 +14,9 @@ defmodule WandererApp.Character.Fleet do
   @spec get_fleet_for_character(String.t()) ::
           {:ok, map()} | {:error, :not_in_fleet} | {:error, term()}
   def get_fleet_for_character(character_id) do
-    with {:ok, %{access_token: access_token, eve_id: eve_id}} <-
+    with {:ok, %{access_token: access_token, eve_id: eve_id} = character} <-
            WandererApp.Character.get_character(character_id),
+         :ok <- check_fleet_scope(character),
          {:ok, fleet_info} <-
            Esi.get_character_fleet(eve_id,
              access_token: access_token,
@@ -24,10 +25,15 @@ defmodule WandererApp.Character.Fleet do
            ) do
       {:ok, fleet_info}
     else
+      {:error, :missing_scope} -> {:error, :missing_scope}
       {:error, :forbidden} -> {:error, :not_in_fleet}
       {:error, :not_found} -> {:error, :not_in_fleet}
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  defp check_fleet_scope(character) do
+    if WandererApp.Character.has_fleet_access?(character), do: :ok, else: {:error, :missing_scope}
   end
 
   @doc """

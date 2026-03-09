@@ -8,6 +8,7 @@ defmodule WandererApp.Character do
 
   @read_character_wallet_scope "esi-wallet.read_character_wallet.v1"
   @read_corp_wallet_scope "esi-wallet.read_corporation_wallets.v1"
+  @read_fleet_scope "esi-fleets.read_fleet.v1"
 
   @default_character_tracking_data %{
     solar_system_id: nil,
@@ -211,6 +212,11 @@ defmodule WandererApp.Character do
       do: scopes |> String.split(" ") |> Enum.member?(@read_corp_wallet_scope)
 
   def can_track_corp_wallet?(_), do: false
+
+  def has_fleet_access?(%{scopes: scopes} = _character) when is_binary(scopes),
+    do: scopes |> String.split(" ") |> Enum.member?(@read_fleet_scope)
+
+  def has_fleet_access?(_), do: false
 
   def can_pause_tracking?(character_id) do
     case get_character(character_id) do

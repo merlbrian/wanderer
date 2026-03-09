@@ -20,6 +20,7 @@ const FleetContent: React.FC = () => {
 
   const [fleetInfo, setFleetInfo] = useState<FleetInfo | null>(null);
   const [fleetError, setFleetError] = useState<string | null>(null);
+  const [missingAccessChars, setMissingAccessChars] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [promotingId, setPromotingId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -51,14 +52,17 @@ const FleetContent: React.FC = () => {
     setIsLoading(true);
     setFeedback(null);
     try {
-      const resp = await outCommand<{ fleet_id?: number; members?: FleetMember[]; error?: string }>({
+      const resp = await outCommand<{ fleet_id?: number; members?: FleetMember[]; error?: string; characters?: string[]; missing_scope_characters?: string[] }>({
         type: OutCommand.getFleet,
         data: {},
       });
       if (resp.error) {
         setFleetInfo(null);
         setFleetError(resp.error);
+        // Capture which characters need re-auth (either all missing scope, or a partial subset)
+        setMissingAccessChars(resp.characters ?? resp.missing_scope_characters ?? []);
       } else if (resp.fleet_id != null) {
+        setMissingAccessChars([]);
         setFleetInfo({ fleet_id: resp.fleet_id, members: resp.members ?? [] });
         setFleetError(null);
       }
@@ -151,15 +155,51 @@ const FleetContent: React.FC = () => {
         </button>
       </div>
 
-      {/* Not in fleet */}
-      {fleetError === 'not_in_fleet' && (
-        <div className="text-stone-500 text-[10px] text-center py-2">
-          None of your characters are currently in a fleet.
+      {/* Missing fleet scope — show re-auth prompts */}
+      {fleetError === 'missing_scope' && (
+        <div className="flex flex-col gap-2 py-2">
+          <div className="text-amber-400 text-[10px] text-center">
+            Fleet access not granted. Re-authenticate to enable fleet tracking:
+          </div>
+          {missingAccessChars.map(name => (
+            <a
+              key={name}
+              href="/auth/eve"
+              className="flex items-center justify-center gap-1 px-3 py-1.5 bg-amber-800 hover:bg-amber-700 text-white text-[10px] rounded text-center"
+            >
+              🔑 Grant Fleet Access — {name}
+            </a>
+          ))}
         </div>
       )}
 
+      {/* Not in fleet */}
+      {fleetError === 'not_in_fleet' && (
+        <>
+          <div className="text-stone-500 text-[10px] text-center py-2">
+            None of your characters are currently in a fleet.
+          </div>
+          {missingAccessChars.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <div className="text-amber-500 text-[10px] text-center">
+                Some characters need fleet scope:
+              </div>
+              {missingAccessChars.map(name => (
+                <a
+                  key={name}
+                  href="/auth/eve"
+                  className="flex items-center justify-center gap-1 px-3 py-1 bg-neutral-700 hover:bg-neutral-600 text-amber-300 text-[10px] rounded"
+                >
+                  🔑 Re-auth — {name}
+                </a>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
       {/* Generic error */}
-      {fleetError && fleetError !== 'not_in_fleet' && (
+      {fleetError && fleetError !== 'not_in_fleet' && fleetError !== 'missing_scope' && (
         <div className="text-red-400 text-[10px] text-center py-2">{fleetError}</div>
       )}
 
