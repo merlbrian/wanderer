@@ -30,10 +30,10 @@ defmodule WandererApp.Esi.ApiClient do
   def get_server_status, do: do_get("/status", [], @cache_opts)
 
   # Fleet management
-  def get_character_fleet(character_eve_id, opts \ []),
+  def get_character_fleet(character_eve_id, opts \\ []),
     do: get_character_auth_data(character_eve_id, "fleet", opts)
 
-  def get_fleet_members(fleet_id, opts \ []),
+  def get_fleet_members(fleet_id, opts \\ []),
     do:
       do_get(
         "/fleets/#{fleet_id}/members/",
@@ -41,7 +41,7 @@ defmodule WandererApp.Esi.ApiClient do
         opts |> with_refresh_token()
       )
 
-  def move_fleet_member(fleet_id, member_id, role, wing_id, squad_id, opts \ []),
+  def move_fleet_member(fleet_id, member_id, role, wing_id, squad_id, opts \\ []),
     do:
       do_put_esi(
         "/fleets/#{fleet_id}/members/#{member_id}/",
@@ -707,7 +707,7 @@ defmodule WandererApp.Esi.ApiClient do
         {:error, "Request failed"}
     end
   end
-  defp do_put_esi(url, opts, pool \ @general_pool) do
+  defp do_put_esi(url, opts, pool \\ @general_pool) do
     try do
       req_opts =
         (opts |> with_user_agent_opts() |> Keyword.merge(@retry_opts)) ++
