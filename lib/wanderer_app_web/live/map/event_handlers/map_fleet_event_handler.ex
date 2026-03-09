@@ -114,21 +114,39 @@ defmodule WandererAppWeb.MapFleetEventHandler do
           else
             target_member_id = target_member["character_id"] || target_member[:character_id]
 
+            # Find a valid squad_id in Wing 1 (required by ESI when demoting to squad_member)
+            squad_id =
+              members
+              |> Enum.find_value(fn m ->
+                sid = m["squad_id"] || m[:squad_id]
+                wid = m["wing_id"] || m[:wing_id]
+                if not is_nil(sid) and sid > 0 and wid == wing_id, do: sid, else: nil
+              end)
+
             # Demote existing wing_commander(s) to squad_member
-            members
-            |> Enum.filter(fn m ->
-              (m["role"] || m[:role]) == "wing_commander" &&
-                (m["character_id"] || m[:character_id]) != target_member_id
-            end)
-            |> Task.async_stream(
-              fn m ->
-                member_id = m["character_id"] || m[:character_id]
-                Fleet.set_fleet_member_role(boss_char_id, fleet_id, member_id, "squad_member", wing_id, nil)
-              end,
-              max_concurrency: 4,
-              timeout: :timer.seconds(30)
-            )
-            |> Enum.each(fn _ -> :ok end)
+            demotion_results =
+              members
+              |> Enum.filter(fn m ->
+                (m["role"] || m[:role]) == "wing_commander" &&
+                  (m["character_id"] || m[:character_id]) != target_member_id
+              end)
+              |> Task.async_stream(
+                fn m ->
+                  member_id = m["character_id"] || m[:character_id]
+                  result = Fleet.set_fleet_member_role(boss_char_id, fleet_id, member_id, "squad_member", wing_id, squad_id)
+                  if result != :ok do
+                    Logger.warning("[MapFleetEventHandler] demotion of #{member_id} returned: #{inspect(result)}")
+                  end
+                  result
+                end,
+                max_concurrency: 4,
+                timeout: :timer.seconds(30)
+              )
+              |> Enum.map(fn {:ok, r} -> r; {:exit, r} -> {:error, r} end)
+
+            if Enum.any?(demotion_results, &(&1 != :ok)) do
+              Logger.warning("[MapFleetEventHandler] some demotions failed: #{inspect(demotion_results)}")
+            end
 
             # Promote target to wing_commander
             case Fleet.set_fleet_member_role(boss_char_id, fleet_id, target_member_id, "wing_commander", wing_id, nil) do
