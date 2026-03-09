@@ -1,6 +1,7 @@
 import { WindowProps } from '@/hooks/Mapper/components/ui-kit/WindowManager/types.ts';
 import {
   CommentsWidget,
+  FleetWidget,
   LocalCharacters,
   MissionsWidget,
   SystemInfo,
@@ -26,6 +27,7 @@ export enum WidgetsIds {
   comments = 'comments',
   userRoutes = 'userRoutes',
   missions = 'missions',
+  fleet = 'fleet',
 }
 
 export const STORED_VISIBLE_WIDGETS_DEFAULT = [
@@ -106,6 +108,13 @@ export const DEFAULT_WIDGETS: WindowProps[] = [
     zIndex: 0,
     content: () => <MissionsWidget />,
   },
+  {
+    id: WidgetsIds.fleet,
+    position: { x: 840, y: 10 },
+    size: { width: 320, height: 320 },
+    zIndex: 0,
+    content: () => <FleetWidget />,
+  },
 ];
 
 type WidgetsCheckboxesType = {
@@ -153,5 +162,9 @@ export const WIDGETS_CHECKBOXES_PROPS: WidgetsCheckboxesType = [
   {
     id: WidgetsIds.missions,
     label: 'Agent Missions',
+  },
+  {
+    id: WidgetsIds.fleet,
+    label: 'Fleet',
   },
 ];

@@ -9,3 +9,4 @@ export * from './WRoutesPublic';
 export * from './WRoutesBy';
 export * from './CommentsWidget';
 export * from './MissionsWidget';
+export * from './FleetWidget';
