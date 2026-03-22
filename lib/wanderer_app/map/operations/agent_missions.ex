@@ -114,6 +114,44 @@ defmodule WandererApp.Map.Operations.AgentMissions do
   end
 
   @doc """
+  Reactivates all completed missions for a specific character in a system.
+  """
+  @spec reset_missions_for_character_in_system(String.t(), String.t(), String.t()) :: :ok | {:error, term()}
+  def reset_missions_for_character_in_system(character_eve_id, map_id, system_name) do
+    case AgentMission.by_map_id_completed(map_id) do
+      {:ok, missions} ->
+        missions
+        |> Enum.filter(fn m -> m.character_eve_id == character_eve_id && m.system_name == system_name end)
+        |> Enum.each(fn m -> AgentMission.update(m, %{status: "active"}) end)
+
+        :ok
+
+      {:error, reason} ->
+        Logger.error("[AgentMissions.reset_missions_for_character_in_system] error: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Reactivates all completed missions in a system (all characters).
+  """
+  @spec reset_all_missions_in_system(String.t(), String.t()) :: :ok | {:error, term()}
+  def reset_all_missions_in_system(map_id, system_name) do
+    case AgentMission.by_map_id_completed(map_id) do
+      {:ok, missions} ->
+        missions
+        |> Enum.filter(fn m -> m.system_name == system_name end)
+        |> Enum.each(fn m -> AgentMission.update(m, %{status: "active"}) end)
+
+        :ok
+
+      {:error, reason} ->
+        Logger.error("[AgentMissions.reset_all_missions_in_system] error: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
   Soft-deletes a mission.
   """
   @spec delete_mission(String.t()) :: :ok | {:error, term()}
