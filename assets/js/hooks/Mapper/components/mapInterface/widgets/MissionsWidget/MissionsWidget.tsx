@@ -144,25 +144,13 @@ const MissionsContent: React.FC = () => {
     [outCommand, loadMissions],
   );
 
-  const handleResetCharacter = useCallback(
-    async (charId: string, systemName: string) => {
-      try {
-        await outCommand({ type: OutCommand.resetCharacterInSystem, data: { character_eve_id: charId, system_name: systemName } });
-        await loadMissions();
-      } catch { /* ignore */ }
-    },
-    [outCommand, loadMissions],
-  );
-
-  const handleResetAll = useCallback(
-    async (systemName: string) => {
-      try {
-        await outCommand({ type: OutCommand.resetAllInSystem, data: { system_name: systemName } });
-        await loadMissions();
-      } catch { /* ignore */ }
-    },
-    [outCommand, loadMissions],
-  );
+  const handleReset = useCallback(async () => {
+    if (!selectedCharId) return;
+    try {
+      await outCommand({ type: OutCommand.resetCharacterMissions, data: { character_eve_id: selectedCharId } });
+      await loadMissions();
+    } catch { /* ignore */ }
+  }, [outCommand, selectedCharId, loadMissions]);
 
   const systemGroups = useMemo<SystemGroup[]>(() => {
     const active = missions.filter(m => m.status === 'active');
@@ -223,13 +211,23 @@ const MissionsContent: React.FC = () => {
           </div>
         )}
 
-        <button
-          className="px-2 py-0.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 text-white rounded text-xs self-end"
-          disabled={isSubmitting || !pasteText.trim() || !selectedCharId}
-          onClick={handlePaste}
-        >
-          {isSubmitting ? 'Importing…' : 'Import'}
-        </button>
+        <div className="flex gap-2 self-end">
+          <button
+            className="px-2 py-0.5 bg-amber-700 hover:bg-amber-600 disabled:opacity-40 text-white rounded text-xs"
+            disabled={!selectedCharId}
+            title="Reactivate all cleared missions for this character"
+            onClick={handleReset}
+          >
+            Reset
+          </button>
+          <button
+            className="px-2 py-0.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 text-white rounded text-xs"
+            disabled={isSubmitting || !pasteText.trim() || !selectedCharId}
+            onClick={handlePaste}
+          >
+            {isSubmitting ? 'Importing…' : 'Import'}
+          </button>
+        </div>
 
         {feedback && <div className="text-stone-300 text-[10px]">{feedback}</div>}
       </div>
@@ -248,8 +246,6 @@ const MissionsContent: React.FC = () => {
             charNameById={charNameById}
             onClearCharacter={handleClearCharacter}
             onClearAll={handleClearAll}
-            onResetCharacter={handleResetCharacter}
-            onResetAll={handleResetAll}
           />
         ))}
       </div>
@@ -263,11 +259,9 @@ interface SystemCardProps {
   charNameById: Map<string, string>;
   onClearCharacter: (charId: string, systemName: string) => void;
   onClearAll: (systemName: string) => void;
-  onResetCharacter: (charId: string, systemName: string) => void;
-  onResetAll: (systemName: string) => void;
 }
 
-const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCharacter, onClearAll, onResetCharacter, onResetAll }) => {
+const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCharacter, onClearAll }) => {
   const charEntries = Array.from(group.byChar.entries());
   const totalCount = charEntries.reduce((sum, [, ms]) => sum + ms.reduce((s, m) => s + (m.mission_count ?? 1), 0), 0);
 
@@ -285,22 +279,13 @@ const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCha
             {[group.constellation, group.region].filter(Boolean).join(' · ')}
           </div>
         </div>
-        <div className="flex items-center gap-1 ml-2 shrink-0">
-          <button
-            className="px-1.5 py-0.5 bg-amber-700 hover:bg-amber-600 text-white rounded text-[10px]"
-            title="Reactivate all cleared missions in this system"
-            onClick={() => onResetAll(group.system_name)}
-          >
-            Reset all
-          </button>
-          <button
-            className="px-1.5 py-0.5 bg-red-900 hover:bg-red-700 text-white rounded text-[10px]"
-            title="Clear all missions in this system"
-            onClick={() => onClearAll(group.system_name)}
-          >
-            Clear all
-          </button>
-        </div>
+        <button
+          className="ml-2 px-1.5 py-0.5 bg-red-900 hover:bg-red-700 text-white rounded text-[10px] shrink-0"
+          title="Clear all missions in this system"
+          onClick={() => onClearAll(group.system_name)}
+        >
+          Clear all
+        </button>
       </div>
 
       <div className="flex flex-col divide-y divide-gray-700 divide-opacity-30">
@@ -319,22 +304,13 @@ const SystemCard: React.FC<SystemCardProps> = ({ group, charNameById, onClearCha
                 {missionCount} mission{missionCount !== 1 ? 's' : ''}
               </span>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                className="px-1.5 py-0.5 bg-amber-700 hover:bg-amber-600 text-white rounded text-[10px]"
-                title={`Reactivate ${charNameById.get(charId) ?? charId}'s cleared missions here`}
-                onClick={() => onResetCharacter(charId, group.system_name)}
-              >
-                Reset
-              </button>
-              <button
-                className="px-1.5 py-0.5 bg-green-800 hover:bg-green-600 text-white rounded text-[10px]"
-                title={`Clear ${charNameById.get(charId) ?? charId}'s missions here`}
-                onClick={() => onClearCharacter(charId, group.system_name)}
-              >
-                Clear
-              </button>
-            </div>
+            <button
+              className="px-1.5 py-0.5 bg-green-800 hover:bg-green-600 text-white rounded text-[10px] shrink-0"
+              title={`Clear ${charNameById.get(charId) ?? charId}'s missions here`}
+              onClick={() => onClearCharacter(charId, group.system_name)}
+            >
+              Clear
+            </button>
           </div>
           );
         })}

@@ -163,8 +163,8 @@ defmodule WandererAppWeb.MapMissionsEventHandler do
   end
 
   def handle_ui_event(
-        "reset_character_in_system",
-        %{"character_eve_id" => character_eve_id, "system_name" => system_name},
+        "reset_character_missions",
+        %{"character_eve_id" => character_eve_id},
         %{
           assigns: %{
             map_id: map_id,
@@ -172,32 +172,12 @@ defmodule WandererAppWeb.MapMissionsEventHandler do
           }
         } = socket
       ) do
-    case AgentMissions.reset_missions_for_character_in_system(character_eve_id, map_id, system_name) do
+    case AgentMissions.reset_all_missions_for_character(character_eve_id, map_id) do
       :ok ->
         {:reply, %{status: "ok"}, socket}
 
       {:error, reason} ->
-        Logger.error("[MapMissionsEventHandler] reset_character_in_system error: #{inspect(reason)}")
-        {:reply, %{status: "error"}, socket}
-    end
-  end
-
-  def handle_ui_event(
-        "reset_all_in_system",
-        %{"system_name" => system_name},
-        %{
-          assigns: %{
-            map_id: map_id,
-            user_permissions: %{update_system: true}
-          }
-        } = socket
-      ) do
-    case AgentMissions.reset_all_missions_in_system(map_id, system_name) do
-      :ok ->
-        {:reply, %{status: "ok"}, socket}
-
-      {:error, reason} ->
-        Logger.error("[MapMissionsEventHandler] reset_all_in_system error: #{inspect(reason)}")
+        Logger.error("[MapMissionsEventHandler] reset_character_missions error: #{inspect(reason)}")
         {:reply, %{status: "error"}, socket}
     end
   end

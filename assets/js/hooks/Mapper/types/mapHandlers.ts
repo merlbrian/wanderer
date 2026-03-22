@@ -309,8 +309,7 @@ export enum OutCommand {
   deleteMission = 'delete_mission',
   clearCharacterInSystem = 'clear_character_in_system',
   clearAllInSystem = 'clear_all_in_system',
-  resetCharacterInSystem = 'reset_character_in_system',
-  resetAllInSystem = 'reset_all_in_system',
+  resetCharacterMissions = 'reset_character_missions',
 
   // Fleet management
   getFleet = 'get_fleet',
