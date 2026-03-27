@@ -162,6 +162,26 @@ defmodule WandererAppWeb.MapMissionsEventHandler do
     end
   end
 
+  def handle_ui_event(
+        "reset_character_missions",
+        %{"character_eve_id" => character_eve_id},
+        %{
+          assigns: %{
+            map_id: map_id,
+            user_permissions: %{update_system: true}
+          }
+        } = socket
+      ) do
+    case AgentMissions.reset_all_missions_for_character(character_eve_id, map_id) do
+      :ok ->
+        {:reply, %{status: "ok"}, socket}
+
+      {:error, reason} ->
+        Logger.error("[MapMissionsEventHandler] reset_character_missions error: #{inspect(reason)}")
+        {:reply, %{status: "error"}, socket}
+    end
+  end
+
   def handle_ui_event(event, body, socket),
     do: MapCoreEventHandler.handle_ui_event(event, body, socket)
 end

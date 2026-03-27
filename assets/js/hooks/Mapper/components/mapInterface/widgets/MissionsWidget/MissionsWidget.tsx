@@ -144,6 +144,14 @@ const MissionsContent: React.FC = () => {
     [outCommand, loadMissions],
   );
 
+  const handleReset = useCallback(async () => {
+    if (!selectedCharId) return;
+    try {
+      await outCommand({ type: OutCommand.resetCharacterMissions, data: { character_eve_id: selectedCharId } });
+      await loadMissions();
+    } catch { /* ignore */ }
+  }, [outCommand, selectedCharId, loadMissions]);
+
   const systemGroups = useMemo<SystemGroup[]>(() => {
     const active = missions.filter(m => m.status === 'active');
     const bySystem = new Map<string, SystemGroup>();
@@ -203,13 +211,23 @@ const MissionsContent: React.FC = () => {
           </div>
         )}
 
-        <button
-          className="px-2 py-0.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 text-white rounded text-xs self-end"
-          disabled={isSubmitting || !pasteText.trim() || !selectedCharId}
-          onClick={handlePaste}
-        >
-          {isSubmitting ? 'Importing…' : 'Import'}
-        </button>
+        <div className="flex gap-2 self-end">
+          <button
+            className="px-2 py-0.5 bg-amber-700 hover:bg-amber-600 disabled:opacity-40 text-white rounded text-xs"
+            disabled={!selectedCharId}
+            title="Reactivate all cleared missions for this character"
+            onClick={handleReset}
+          >
+            Reset
+          </button>
+          <button
+            className="px-2 py-0.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 text-white rounded text-xs"
+            disabled={isSubmitting || !pasteText.trim() || !selectedCharId}
+            onClick={handlePaste}
+          >
+            {isSubmitting ? 'Importing…' : 'Import'}
+          </button>
+        </div>
 
         {feedback && <div className="text-stone-300 text-[10px]">{feedback}</div>}
       </div>

@@ -49,6 +49,7 @@ defmodule WandererApp.Api.AgentMission do
 
     define(:by_map_id, action: :by_map_id, args: [:map_id])
     define(:by_character_and_map, action: :by_character_and_map, args: [:character_eve_id, :map_id])
+    define(:by_map_id_completed, action: :by_map_id_completed, args: [:map_id])
   end
 
   actions do
@@ -91,6 +92,8 @@ defmodule WandererApp.Api.AgentMission do
         :region,
         :mission_name,
         :mission_count,
+        :status,
+        :deleted,
         :updated_at
       ]
 
@@ -126,6 +129,13 @@ defmodule WandererApp.Api.AgentMission do
       argument(:map_id, :uuid, allow_nil?: false)
 
       filter(expr(map_id == ^arg(:map_id) and deleted == false and status == "active"))
+      prepare build(sort: [inserted_at: :asc])
+    end
+
+    read :by_map_id_completed do
+      argument(:map_id, :uuid, allow_nil?: false)
+
+      filter(expr(map_id == ^arg(:map_id) and deleted == false and status == "completed"))
       prepare build(sort: [inserted_at: :asc])
     end
 
