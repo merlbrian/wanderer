@@ -114,7 +114,7 @@ defmodule WandererApp.Map.Operations.AgentMissions do
   end
 
   @doc """
-  Reactivates all completed missions for a character across all systems on a map.
+  Soft-deletes all completed missions for a character on a map so they can be re-imported fresh.
   """
   @spec reset_all_missions_for_character(String.t(), String.t()) :: :ok | {:error, term()}
   def reset_all_missions_for_character(character_eve_id, map_id) do
@@ -122,7 +122,7 @@ defmodule WandererApp.Map.Operations.AgentMissions do
       {:ok, missions} ->
         missions
         |> Enum.filter(fn m -> m.character_eve_id == character_eve_id end)
-        |> Enum.each(fn m -> AgentMission.update(m, %{status: "active"}) end)
+        |> Enum.each(fn m -> AgentMission.update(m, %{deleted: true}) end)
 
         :ok
 
