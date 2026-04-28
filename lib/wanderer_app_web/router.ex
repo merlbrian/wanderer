@@ -569,6 +569,7 @@ defmodule WandererAppWeb.Router do
       pipe_through(:browser)
       error_tracker_dashboard("/errors", as: :error_tracker_dev_dashboard)
       live_dashboard("/dashboard", metrics: WandererAppWeb.Telemetry)
+      get "/auto-login", WandererAppWeb.DevLoginController, :login
     end
   end
 
