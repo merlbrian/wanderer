@@ -387,7 +387,7 @@ const MissionsContent: React.FC = () => {
         <div className="text-stone-400 uppercase tracking-wide text-[10px]">Import Bookmarks</div>
 
         {userOwnedChars.length > 0 && (
-          <div className="flex flex-row gap-2 flex-wrap">
+          <div className="flex flex-row gap-2 flex-wrap px-0.5 py-0.5">
             {userOwnedChars.map(c => (
               <button
                 key={c.eve_id}
