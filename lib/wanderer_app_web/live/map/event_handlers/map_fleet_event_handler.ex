@@ -74,7 +74,9 @@ defmodule WandererAppWeb.MapFleetEventHandler do
     boss_char_id = Map.get(assigns, :fleet_boss_char_id)
 
     if is_nil(boss_char_id) do
-      {:reply, %{status: "error", reason: "fleet not loaded — please refresh the fleet widget first"}, socket}
+      {:reply,
+       %{status: "error", reason: "fleet not loaded — please refresh the fleet widget first"},
+       socket}
     else
       do_set_wing_commander(socket, fleet_id, boss_char_id, target_eve_id)
     end
@@ -100,13 +102,16 @@ defmodule WandererAppWeb.MapFleetEventHandler do
           end)
 
         if is_nil(wing_id) do
-          {:reply, %{status: "error", reason: "no wing found in fleet — please create Wing 1 in-game"}, socket}
+          {:reply,
+           %{status: "error", reason: "no wing found in fleet — please create Wing 1 in-game"},
+           socket}
         else
           # Find the target member_id (ESI uses integer character_id as member_id)
           target_member =
             members
             |> Enum.find(fn m ->
-              (m["character_id"] || m[:character_id]) |> to_string() == to_string(integer_eve_id(target_eve_id))
+              (m["character_id"] || m[:character_id]) |> to_string() ==
+                to_string(integer_eve_id(target_eve_id))
             end)
 
           if is_nil(target_member) do
@@ -133,23 +138,48 @@ defmodule WandererAppWeb.MapFleetEventHandler do
               |> Task.async_stream(
                 fn m ->
                   member_id = m["character_id"] || m[:character_id]
-                  result = Fleet.set_fleet_member_role(boss_char_id, fleet_id, member_id, "squad_member", wing_id, squad_id)
+
+                  result =
+                    Fleet.set_fleet_member_role(
+                      boss_char_id,
+                      fleet_id,
+                      member_id,
+                      "squad_member",
+                      wing_id,
+                      squad_id
+                    )
+
                   if result != :ok do
-                    Logger.warning("[MapFleetEventHandler] demotion of #{member_id} returned: #{inspect(result)}")
+                    Logger.warning(
+                      "[MapFleetEventHandler] demotion of #{member_id} returned: #{inspect(result)}"
+                    )
                   end
+
                   result
                 end,
                 max_concurrency: 4,
                 timeout: :timer.seconds(30)
               )
-              |> Enum.map(fn {:ok, r} -> r; {:exit, r} -> {:error, r} end)
+              |> Enum.map(fn
+                {:ok, r} -> r
+                {:exit, r} -> {:error, r}
+              end)
 
             if Enum.any?(demotion_results, &(&1 != :ok)) do
-              Logger.warning("[MapFleetEventHandler] some demotions failed: #{inspect(demotion_results)}")
+              Logger.warning(
+                "[MapFleetEventHandler] some demotions failed: #{inspect(demotion_results)}"
+              )
             end
 
             # Promote target to wing_commander
-            case Fleet.set_fleet_member_role(boss_char_id, fleet_id, target_member_id, "wing_commander", wing_id, nil) do
+            case Fleet.set_fleet_member_role(
+                   boss_char_id,
+                   fleet_id,
+                   target_member_id,
+                   "wing_commander",
+                   wing_id,
+                   nil
+                 ) do
               :ok ->
                 {:reply, %{status: "ok"}, socket}
 

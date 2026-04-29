@@ -43,9 +43,7 @@ defmodule WandererApp.Repo.Migrations.AddAgentMissions do
              name: "agent_missions_v1_uniq_char_map_system_type_index"
            )
 
-    create index(:agent_missions_v1, [:map_id],
-             name: "agent_missions_v1_map_id_index"
-           )
+    create index(:agent_missions_v1, [:map_id], name: "agent_missions_v1_map_id_index")
 
     create index(:agent_missions_v1, [:character_eve_id, :map_id],
              name: "agent_missions_v1_character_map_index"
@@ -59,9 +57,7 @@ defmodule WandererApp.Repo.Migrations.AddAgentMissions do
                      name: "agent_missions_v1_uniq_char_map_system_type_index"
                    )
 
-    drop_if_exists index(:agent_missions_v1, [:map_id],
-                     name: "agent_missions_v1_map_id_index"
-                   )
+    drop_if_exists index(:agent_missions_v1, [:map_id], name: "agent_missions_v1_map_id_index")
 
     drop_if_exists index(:agent_missions_v1, [:character_eve_id, :map_id],
                      name: "agent_missions_v1_character_map_index"

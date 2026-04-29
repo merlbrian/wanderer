@@ -58,9 +58,23 @@ defmodule WandererApp.Character.Fleet do
   `role` is one of `"fleet_commander"`, `"wing_commander"`, `"squad_commander"`, `"squad_member"`.
   `wing_id` and `squad_id` are required by ESI for positional roles; pass `nil` for squad_member.
   """
-  @spec set_fleet_member_role(String.t(), integer(), integer(), String.t(), integer() | nil, integer() | nil) ::
+  @spec set_fleet_member_role(
+          String.t(),
+          integer(),
+          integer(),
+          String.t(),
+          integer() | nil,
+          integer() | nil
+        ) ::
           :ok | {:error, term()}
-  def set_fleet_member_role(acting_character_id, fleet_id, target_member_id, role, wing_id, squad_id) do
+  def set_fleet_member_role(
+        acting_character_id,
+        fleet_id,
+        target_member_id,
+        role,
+        wing_id,
+        squad_id
+      ) do
     with {:ok, %{access_token: access_token}} <-
            WandererApp.Character.get_character(acting_character_id) do
       Esi.move_fleet_member(fleet_id, target_member_id, role, wing_id, squad_id,

@@ -711,6 +711,7 @@ defmodule WandererApp.Esi.ApiClient do
         {:error, "Request failed"}
     end
   end
+
   defp do_put_esi(url, opts, pool \\ @general_pool) do
     try do
       req_opts =
@@ -743,6 +744,7 @@ defmodule WandererApp.Esi.ApiClient do
         {:error, "Request failed"}
     end
   end
+
   defp do_get_retry(path, api_opts, opts, status \\ :forbidden, pool \\ @general_pool) do
     refresh_token? = opts |> Keyword.get(:refresh_token?, false)
     retry_count = opts |> Keyword.get(:retry_count, 0)
@@ -893,7 +895,8 @@ defmodule WandererApp.Esi.ApiClient do
          expires_at,
          _scopes
        ) do
-    time_since_expiry = DateTime.diff(DateTime.utc_now(), DateTime.from_unix!(expires_at), :second)
+    time_since_expiry =
+      DateTime.diff(DateTime.utc_now(), DateTime.from_unix!(expires_at), :second)
 
     Logger.warning("TOKEN_REFRESH_FAILED: Transient OAuth2 error during token refresh",
       character_id: character_id,
@@ -911,7 +914,8 @@ defmodule WandererApp.Esi.ApiClient do
   end
 
   defp handle_refresh_token_result(error, _character, character_id, expires_at, _scopes) do
-    time_since_expiry = DateTime.diff(DateTime.utc_now(), DateTime.from_unix!(expires_at), :second)
+    time_since_expiry =
+      DateTime.diff(DateTime.utc_now(), DateTime.from_unix!(expires_at), :second)
 
     Logger.warning("TOKEN_REFRESH_FAILED: Unexpected error during token refresh",
       character_id: character_id,

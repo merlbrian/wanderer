@@ -78,7 +78,8 @@ defmodule WandererApp.Map.Operations.AgentMissions do
   @doc """
   Marks all active missions for a specific character in a system as completed.
   """
-  @spec complete_missions_for_character_in_system(String.t(), String.t(), String.t()) :: :ok | {:error, term()}
+  @spec complete_missions_for_character_in_system(String.t(), String.t(), String.t()) ::
+          :ok | {:error, term()}
   def complete_missions_for_character_in_system(character_eve_id, map_id, system_name) do
     case AgentMission.by_character_and_map(character_eve_id, map_id) do
       {:ok, missions} ->
@@ -89,7 +90,10 @@ defmodule WandererApp.Map.Operations.AgentMissions do
         :ok
 
       {:error, reason} ->
-        Logger.error("[AgentMissions.complete_missions_for_character_in_system] error: #{inspect(reason)}")
+        Logger.error(
+          "[AgentMissions.complete_missions_for_character_in_system] error: #{inspect(reason)}"
+        )
+
         {:error, reason}
     end
   end
@@ -145,7 +149,12 @@ defmodule WandererApp.Map.Operations.AgentMissions do
 
   # --- Private ---
 
-  defp resolve_and_create(map_id, character_eve_id, %{system_name: system_name} = parsed, mission_count) do
+  defp resolve_and_create(
+         map_id,
+         character_eve_id,
+         %{system_name: system_name} = parsed,
+         mission_count
+       ) do
     case CachedInfo.get_system_id_by_name(system_name) do
       {:ok, solar_system_id} ->
         attrs = %{
@@ -177,7 +186,10 @@ defmodule WandererApp.Map.Operations.AgentMissions do
         {:skip, :system_not_found}
 
       {:error, reason} ->
-        Logger.error("[AgentMissions] system lookup error for #{inspect(system_name)}: #{inspect(reason)}")
+        Logger.error(
+          "[AgentMissions] system lookup error for #{inspect(system_name)}: #{inspect(reason)}"
+        )
+
         {:skip, :lookup_error}
     end
   end
