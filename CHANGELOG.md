@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v1.96.8](https://github.com/wanderer-industries/wanderer/compare/v1.96.7...v1.96.8) (2026-05-16)
+
+
+
+
+### Bug Fixes:
+
+* missions: prevent character portrait ring from clipping on left edge (#9)
+
 ## [v1.96.7](https://github.com/wanderer-industries/wanderer/compare/v1.96.6...v1.96.7) (2026-05-16)
 
 
