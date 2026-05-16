@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v1.97.0](https://github.com/wanderer-industries/wanderer/compare/v1.96.8...v1.97.0) (2026-05-16)
+
+
+
+
+### Features:
+
+* e2e: add Playwright end-to-end test suite (#8)
+
+* e2e: add Playwright end-to-end test suite
+
 ## [v1.96.8](https://github.com/wanderer-industries/wanderer/compare/v1.96.7...v1.96.8) (2026-05-16)
 
 
