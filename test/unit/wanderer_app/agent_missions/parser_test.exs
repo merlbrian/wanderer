@@ -46,7 +46,9 @@ defmodule WandererApp.AgentMissions.ParserTest do
     end
 
     test "skips unrecognized lines silently" do
-      text = "Some random line\tBookmark\t1\tSystem\tConst\tRegion\t2025.01.01 00:00\t-\n#{@encounter_line}"
+      text =
+        "Some random line\tBookmark\t1\tSystem\tConst\tRegion\t2025.01.01 00:00\t-\n#{@encounter_line}"
+
       {:ok, missions} = Parser.parse(text)
       assert length(missions) == 1
       assert hd(missions).mission_type == :encounter
@@ -74,14 +76,18 @@ defmodule WandererApp.AgentMissions.ParserTest do
     end
 
     test "handles encounter with different deadspace types" do
-      line = "Encounter (Unrated Complex) - Jita\tBookmark\t1\tJita\tLonetrek\tThe Forge\t2026.01.01 12:00\t-"
+      line =
+        "Encounter (Unrated Complex) - Jita\tBookmark\t1\tJita\tLonetrek\tThe Forge\t2026.01.01 12:00\t-"
+
       {:ok, [mission]} = Parser.parse(line)
       assert mission.mission_type == :encounter
       assert mission.mission_name == "Jita"
     end
 
     test "handles system name with numbers and hyphens" do
-      line = "Agent Home Base - 9-F0B2\tStation\t1\t9-F0B2\tSome Const\tSome Region\t2026.01.01 12:00\t-"
+      line =
+        "Agent Home Base - 9-F0B2\tStation\t1\t9-F0B2\tSome Const\tSome Region\t2026.01.01 12:00\t-"
+
       {:ok, [mission]} = Parser.parse(line)
       assert mission.mission_type == :home_base
       assert mission.mission_name == "9-F0B2"

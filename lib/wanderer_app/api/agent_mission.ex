@@ -48,7 +48,12 @@ defmodule WandererApp.Api.AgentMission do
     )
 
     define(:by_map_id, action: :by_map_id, args: [:map_id])
-    define(:by_character_and_map, action: :by_character_and_map, args: [:character_eve_id, :map_id])
+
+    define(:by_character_and_map,
+      action: :by_character_and_map,
+      args: [:character_eve_id, :map_id]
+    )
+
     define(:by_map_id_completed, action: :by_map_id_completed, args: [:map_id])
   end
 

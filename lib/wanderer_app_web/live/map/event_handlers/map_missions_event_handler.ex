@@ -132,12 +132,19 @@ defmodule WandererAppWeb.MapMissionsEventHandler do
           }
         } = socket
       ) do
-    case AgentMissions.complete_missions_for_character_in_system(character_eve_id, map_id, system_name) do
+    case AgentMissions.complete_missions_for_character_in_system(
+           character_eve_id,
+           map_id,
+           system_name
+         ) do
       :ok ->
         {:reply, %{status: "ok"}, socket}
 
       {:error, reason} ->
-        Logger.error("[MapMissionsEventHandler] clear_character_in_system error: #{inspect(reason)}")
+        Logger.error(
+          "[MapMissionsEventHandler] clear_character_in_system error: #{inspect(reason)}"
+        )
+
         {:reply, %{status: "error"}, socket}
     end
   end
@@ -177,7 +184,10 @@ defmodule WandererAppWeb.MapMissionsEventHandler do
         {:reply, %{status: "ok"}, socket}
 
       {:error, reason} ->
-        Logger.error("[MapMissionsEventHandler] reset_character_missions error: #{inspect(reason)}")
+        Logger.error(
+          "[MapMissionsEventHandler] reset_character_missions error: #{inspect(reason)}"
+        )
+
         {:reply, %{status: "error"}, socket}
     end
   end
