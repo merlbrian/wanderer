@@ -86,6 +86,38 @@ EVE SSO credentials (`EVE_CLIENT_ID`, `EVE_CLIENT_SECRET`, `EVE_CALLBACK_URL`) a
 
 Prometheus metrics are exposed on port 4021 at `/metrics`.
 
+## Deployment (Homelab K3s via ArgoCD)
+
+The homelab runs two environments on a single K3s cluster (`workload-01`, control plane at 192.168.2.11):
+
+| Environment | Namespace | URL | Branch | Image tag pattern |
+|-------------|-----------|-----|--------|-------------------|
+| Production | `wanderer-prd` | http://wanderer.merl.lab | `main` | `main-<sha>` |
+| Dev | `wanderer-dev` | http://wanderer-dev.merl.lab | `develop` | `develop-<sha>` |
+
+**How it works:**
+- ArgoCD watches `https://github.com/merlbrian/prd-infra.git` (`helm/wanderer/` path) for Helm config changes.
+- ArgoCD Image Updater is supposed to poll `ghcr.io/merlbrian/wanderer` and write the latest matching tag back to prd-infra. As of 2026-05-16, Image Updater v1.2.0 has moved to a CRD-based model and is **not processing the annotation-based config** on the Application resources — so image tags are not being auto-updated. Both environments may be stuck on rolling tags (`develop`, `latest`) until this is fixed in prd-infra.
+- Helm values live in `prd-infra/helm/wanderer/`: `values.yaml` (base), `values-dev.yaml` (dev overrides), `values-prd.yaml` (prod overrides).
+- K8s secrets (`wanderer-secrets`) are created by `ansible/playbooks/wanderer-secrets.yml` in prd-infra. Dev and prod use **separate EVE SSO applications** (different client IDs/secrets) because each needs a unique callback URL.
+
+**Known behavioral differences between dev and prod:**
+- As of 2026-05-16, pasting a mission in dev shows it as already-skipped — this is a suspected bug in the `develop` branch, not a config difference.
+- `WANDERER_INVITES` must be `false` (or absent) for the EVE SSO login button to appear on the welcome page. When `true`, the app hides the button and requires a valid invite token in the URL (`/welcome?invite=<token>`).
+
+**Checking deployment status:**
+```bash
+# ArgoCD UI
+open http://argocd.merl.lab
+
+# Pod status
+ssh ubuntu@192.168.2.11 "sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get pods -n wanderer-dev"
+ssh ubuntu@192.168.2.11 "sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get pods -n wanderer-prd"
+
+# Logs
+ssh ubuntu@192.168.2.11 "sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl logs -n wanderer-dev deploy/wanderer-dev --tail=50"
+```
+
 ## Testing Notes
 
 Tests use `Ecto.Adapters.SQL.Sandbox` for DB isolation and `Mox` for mocks (call `set_mox_private()` in async tests). Mock implementations live in `test/support/`. CI runs 4 parallel partitions (`--partitions 4`); use `MIX_TEST_PARTITION` locally to reproduce.
