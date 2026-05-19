@@ -206,6 +206,22 @@ defmodule WandererApp.Release do
       Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, all: false, step: step))
   end
 
+  def seed do
+    IO.puts("Loading #{@app}..")
+    :ok = Application.ensure_loaded(@app)
+
+    IO.puts("Starting dependencies..")
+    Enum.each(@start_apps ++ [:telemetry, :finch, :mime, :req], &Application.ensure_all_started/1)
+    {:ok, _} = Finch.start_link(name: Req.Finch)
+
+    IO.puts("Starting repos..")
+    Enum.each(repos(), & &1.start_link(pool_size: 2))
+
+    IO.puts("Seeding EVE data...")
+    WandererApp.EveDataService.update_eve_data()
+    IO.puts("Seed complete!")
+  end
+
   defp prepare do
     IO.puts("Loading #{@app}..")
     # Load the code for myapp, but don't start it
