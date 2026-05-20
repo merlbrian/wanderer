@@ -101,13 +101,13 @@ defmodule WandererApp.Api.MapSolarSystem do
     read :find_by_name do
       argument(:name, :string, allow_nil?: false)
 
-      filter(expr(contains(solar_system_name_lc, string_downcase(^arg(:name)))))
+      filter(expr(fragment("? ILIKE '%' || ? || '%'", solar_system_name, ^arg(:name))))
     end
 
     read :find_by_exact_name do
       argument(:name, :string, allow_nil?: false)
 
-      filter(expr(solar_system_name_lc == string_downcase(^arg(:name))))
+      filter(expr(fragment("? ILIKE ?", solar_system_name, ^arg(:name))))
     end
 
     read :get_wh_class_a do
