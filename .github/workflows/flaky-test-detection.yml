@@ -1,9 +1,6 @@
 name: Flaky Test Detection
 
 on:
-  schedule:
-    # Run nightly at 2 AM UTC
-    - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
       test_file:
